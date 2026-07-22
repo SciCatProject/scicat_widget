@@ -3,7 +3,7 @@ import "./datasetUploadWidget.css";
 import { Config, StaticData } from "./models.ts";
 import { BackendComm } from "./comm.ts";
 import { InputComponent } from "./components/input";
-import { DatasetOverview } from "./forms";
+import { DatasetOverview, SignIn } from "./forms";
 import { GatherResult, UploadComponent } from "./components";
 import { connectInputs } from "./fieldAutomation.ts";
 import { createInputs } from "./inputConstruction.ts";
@@ -19,6 +19,11 @@ async function render({ model, el }: RenderProps<WidgetModel>) {
     const staticData = parseStaticData(model);
 
     const comm = new BackendComm(model);
+
+    const signIn = new SignIn();
+    el.appendChild(signIn.element);
+
+    return;
 
     const inputs = createInputs(config, staticData, comm);
     const inputConnectionCleanup = connectInputs(

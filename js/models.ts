@@ -20,6 +20,12 @@ export type File = {
     remotePath?: string;
 };
 
+export type Instance = {
+    name: string;
+    url: string;
+    supportsSSO: boolean;
+};
+
 export type Instrument = {
     id: string;
     name: string;
