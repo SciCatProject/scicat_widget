@@ -1,9 +1,14 @@
 import { TextInput } from "../components/input";
 import { Instance } from "../models.ts";
 import scicatLogo from "../assets/img/SciCat_logo_icon.svg";
+import { createLabelFor } from "./util.ts";
+import { iconTextButton } from "../components";
 
 export class SignIn {
     readonly element: HTMLDivElement;
+
+    private readonly instances: Instance[];
+    private state: State;
 
     constructor() {
         const instances = [
@@ -26,16 +31,67 @@ export class SignIn {
         ];
 
         this.element = document.createElement("div");
-        this.element.append(createInstanceSelection(instances));
+        this.instances = instances;
+        this.state = this.createInstanceSelection();
+        this.element.replaceChildren(this.state.element);
+    }
+
+    private createInstanceSelection(): InstanceSelection {
+        return new InstanceSelection(
+            this.instances,
+            (instance) => {
+                // TODO
+                console.error("SSO not implemented");
+            },
+            (instance) => {
+                this.state = this.createTokenEntry(instance);
+                this.element.replaceChildren(this.state.element);
+            },
+        );
+    }
+
+    private createTokenEntry(instance: Instance): TokenEntry {
+        return new TokenEntry(instance);
     }
 }
 
-function createInstanceSelection(instances: Instance[]): HTMLDivElement {
+type State = InstanceSelection | TokenEntry;
+
+class InstanceSelection {
+    readonly element: HTMLDivElement;
+
+    constructor(
+        instances: Instance[],
+        onSelectSSO: (instance: Instance) => void,
+        onSelectToken: (instance: Instance) => void,
+    ) {
+        this.element = document.createElement("div");
+        this.element.append(
+            createInstanceSelection(instances, onSelectSSO, onSelectToken),
+        );
+    }
+}
+
+class TokenEntry {
+    readonly element: HTMLDivElement;
+
+    constructor(instance: Instance) {
+        this.element = createTokenEntryElements(instance);
+    }
+}
+
+function createInstanceSelection(
+    instances: Instance[],
+    onSelectSSO: (instance: Instance) => void,
+    onSelectToken: (instance: Instance) => void,
+): HTMLDivElement {
     const searchBar = new TextInput("instanceSearch", { placeholder: "Search..." });
 
     const buttonList = document.createElement("div");
     buttonList.className = "cean-signin-buttons";
-    buttonList.append(...instances.map(createInstanceItem));
+    for (const instance of instances) {
+        buttonList.append(createInstanceItem(instance, onSelectSSO, onSelectToken));
+    }
 
     searchBar.container.addEventListener("input", () => {
         const filter = (searchBar.value ?? "").toLowerCase().trim();
@@ -55,7 +111,11 @@ function createInstanceSelection(instances: Instance[]): HTMLDivElement {
     return panel;
 }
 
-function createInstanceItem(instance: Instance): HTMLDivElement {
+function createInstanceItem(
+    instance: Instance,
+    onSelectSSO: (instance: Instance) => void,
+    onSelectToken: (instance: Instance) => void,
+): HTMLDivElement {
     const shortUrl = instance.url.replace(/^https?:\/\//, "");
 
     const logoContainer = document.createElement("span");
@@ -80,17 +140,21 @@ function createInstanceItem(instance: Instance): HTMLDivElement {
     signInLabel.textContent = "Sign in";
     const signInButton = document.createElement("button");
     signInButton.className = "cean-button";
+    signInButton.addEventListener("click", () => onSelectSSO(instance));
     signInButton.append(signInLabel);
 
     const manualLabel = document.createElement("label");
     manualLabel.textContent = "Manual";
     const manualButton = document.createElement("button");
     manualButton.className = "cean-button";
+    manualButton.addEventListener("click", () => onSelectToken(instance));
     manualButton.append(manualLabel);
 
     if (instance.supportsSSO) {
+        bigButton.addEventListener("click", () => onSelectSSO(instance));
         signInButton.classList.add("cean-primary-choice");
     } else {
+        bigButton.addEventListener("click", () => onSelectToken(instance));
         signInButton.disabled = true;
         signInButton.title = "Sign in not available for this SciCat instance.";
         manualButton.classList.add("cean-primary-choice");
@@ -113,4 +177,88 @@ function instanceMatches(instance: HTMLElement, pattern: string): boolean {
         (instance.dataset.name?.indexOf(pattern) ?? -1) > -1 ||
         (instance.dataset.url?.indexOf(pattern) ?? -1) > -1
     );
+}
+
+function createTokenEntryElements(instance: Instance) {
+    const heading = document.createElement("h3");
+    heading.textContent = `Sign in to ${instance.name} with a token`;
+
+    const explanation = document.createElement("div");
+    explanation.innerHTML = `Past your SciCat token from <a target="_blank" href="${instance.url}/user">${instance.url}/user</a> into the
+    input below to sign in with the widget.`;
+
+    const submitButton = iconTextButton(
+        "sign-in-alt",
+        "Sign in",
+        () => {
+            console.log("submitting");
+        },
+        "Submit token",
+    );
+    submitButton.disabled = true;
+
+    const input = new TextInput("token", {
+        type: "password",
+        validator: validateToken,
+    });
+    const label = createLabelFor(
+        input,
+        "SciCat token",
+        "Enter your SciCat login token",
+    );
+
+    input.container.addEventListener("input", () => {
+        submitButton.disabled = !input.value;
+    });
+    input.container.addEventListener("keydown", (e: KeyboardEvent) => {
+        if (e.code === "Enter" || e.code === "NumpadEnter") {
+            submitButton.click();
+        }
+    });
+
+    const container = document.createElement("fieldset");
+    container.append(heading, explanation, label, input.container, submitButton);
+    return container;
+}
+
+function validateToken(token: string | null): string | null {
+    if (token === null) {
+        return null;
+    }
+    const parsed = tryParseJWT(token);
+    if (typeof parsed === "string") {
+        return parsed;
+    }
+    if (jwtExpiration(parsed).getTime() - new Date().getTime() < 5 * 60 * 1000) {
+        return "Token expires in less than 5 minutes.";
+    }
+    return null;
+}
+
+function tryParseJWT(token: string): Record<string, any> | string {
+    try {
+        return parseJwt(token);
+    } catch (error) {
+        return "Malformed token. Please enter a correct token.";
+    }
+}
+
+function parseJwt(token: string): Record<string, any> {
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+        window
+            .atob(base64)
+            .split("")
+            .map((c) => {
+                return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
+            })
+            .join(""),
+    );
+    return JSON.parse(jsonPayload);
+}
+
+function jwtExpiration(token: Record<string, any>): Date {
+    const timestamp = token.exp as number;
+    return new Date(timestamp * 1000);
 }

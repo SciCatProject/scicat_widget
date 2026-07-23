@@ -2,7 +2,7 @@ import { InputComponent, InputOptions } from "./inputComponent.ts";
 
 export interface Options extends InputOptions<string> {
     multiline?: boolean;
-    type?: "text" | "email";
+    type?: "text" | "email" | "password";
     placeholder?: string;
 }
 
