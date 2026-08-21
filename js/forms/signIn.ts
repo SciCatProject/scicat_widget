@@ -9,6 +9,7 @@ export class SignIn {
 
     private readonly instances: Instance[];
     private state: State;
+    private readonly instanceSelection: InstanceSelection;
 
     constructor() {
         const instances = [
@@ -32,7 +33,8 @@ export class SignIn {
 
         this.element = document.createElement("div");
         this.instances = instances;
-        this.state = this.createInstanceSelection();
+        this.instanceSelection = this.createInstanceSelection();
+        this.state = this.instanceSelection;
         this.element.replaceChildren(this.state.element);
     }
 
@@ -44,14 +46,26 @@ export class SignIn {
                 console.error("SSO not implemented");
             },
             (instance) => {
-                this.state = this.createTokenEntry(instance);
-                this.element.replaceChildren(this.state.element);
+                this.transitionState(this.createTokenEntry(instance));
             },
         );
     }
 
     private createTokenEntry(instance: Instance): TokenEntry {
-        return new TokenEntry(instance);
+        return new TokenEntry(
+            instance,
+            (token: string) => {
+                console.log("submitting");
+            },
+            () => {
+                this.transitionState(this.instanceSelection);
+            },
+        );
+    }
+
+    private transitionState(newState: State) {
+        this.state = newState;
+        this.element.replaceChildren(this.state.element);
     }
 }
 
@@ -75,8 +89,12 @@ class InstanceSelection {
 class TokenEntry {
     readonly element: HTMLDivElement;
 
-    constructor(instance: Instance) {
-        this.element = createTokenEntryElements(instance);
+    constructor(
+        instance: Instance,
+        onSubmit: (token: string) => void,
+        onCancel: () => void,
+    ) {
+        this.element = createTokenEntryElements(instance, onSubmit, onCancel);
     }
 }
 
@@ -179,7 +197,11 @@ function instanceMatches(instance: HTMLElement, pattern: string): boolean {
     );
 }
 
-function createTokenEntryElements(instance: Instance): HTMLDivElement {
+function createTokenEntryElements(
+    instance: Instance,
+    onSubmit: (token: string) => void,
+    onCancel: () => void,
+): HTMLDivElement {
     const heading = document.createElement("h3");
     heading.textContent = `Sign in to ${instance.name} with a token`;
 
@@ -191,11 +213,24 @@ function createTokenEntryElements(instance: Instance): HTMLDivElement {
         "sign-in-alt",
         "Sign in",
         () => {
-            console.log("submitting");
+            const value = input.value;
+            if (value !== null) {
+                onSubmit(value);
+            }
         },
         "Submit token",
     );
     submitButton.disabled = true;
+
+    const backButton = iconTextButton(
+        "sign-in-alt",
+        "Back",
+        onCancel,
+        "Back to instance selection",
+    );
+
+    const buttonWrap = document.createElement("div");
+    buttonWrap.append(backButton, submitButton);
 
     const tokenAnalysis = createTokenAnalysisCache();
 
@@ -222,7 +257,7 @@ function createTokenEntryElements(instance: Instance): HTMLDivElement {
     });
 
     const fieldset = document.createElement("fieldset");
-    fieldset.append(label, input.container, submitButton);
+    fieldset.append(label, input.container, tokenWarning, buttonWrap);
 
     const container = document.createElement("div");
     container.append(heading, explanation, fieldset);
