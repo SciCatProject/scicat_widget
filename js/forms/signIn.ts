@@ -197,17 +197,22 @@ function createTokenEntryElements(instance: Instance): HTMLDivElement {
     );
     submitButton.disabled = true;
 
+    const tokenAnalysis = createTokenAnalysisCache();
+
     const input = new TextInput("token", {
         type: "password",
-        validator: validateToken,
+        validator: (token) => tokenAnalysis.get(token).error,
     });
     const label = createLabelFor(
         input,
         "SciCat token",
         "Enter your SciCat login token",
     );
+    const tokenWarning = document.createElement("output");
+    tokenWarning.className = "cean-warning";
 
     input.container.addEventListener("input", () => {
+        tokenWarning.textContent = tokenAnalysis.get(input.value).warning ?? "";
         submitButton.disabled = !input.value || !input.isValid();
     });
     input.container.addEventListener("keydown", (e: KeyboardEvent) => {
@@ -224,18 +229,50 @@ function createTokenEntryElements(instance: Instance): HTMLDivElement {
     return container;
 }
 
-function validateToken(token: string | null): string | null {
+interface TokenAnalysis {
+    error: string | null;
+    warning: string | null;
+}
+
+function createTokenAnalysisCache(): { get: (token: string | null) => TokenAnalysis } {
+    let previousToken: string | null | undefined = undefined;
+    let previousAnalysis: TokenAnalysis = { error: null, warning: null };
+
+    return {
+        get(token: string | null): TokenAnalysis {
+            if (token === previousToken) {
+                return previousAnalysis;
+            }
+
+            previousToken = token;
+            previousAnalysis = analyzeToken(token);
+            return previousAnalysis;
+        },
+    };
+}
+
+function analyzeToken(token: string | null): TokenAnalysis {
     if (token === null) {
-        return null;
+        return { error: null, warning: null };
     }
     const parsed = tryParseJWT(token);
     if (typeof parsed === "string") {
-        return parsed;
+        return { error: parsed, warning: null };
     }
-    if (jwtExpiration(parsed).getTime() - new Date().getTime() < 5 * 60 * 1000) {
-        return "Token expires in less than 5 minutes.";
+
+    const expiresIn = jwtExpiration(parsed).getTime() - new Date().getTime();
+    if (expiresIn <= 0) {
+        return {
+            error: "The token has expired. Please generate a new token.",
+            warning: null,
+        };
+    } else if (expiresIn < 5 * 60 * 1000) {
+        return {
+            error: null,
+            warning: "Warning: the token expires in less than 5 minutes.",
+        };
     }
-    return null;
+    return { error: null, warning: null };
 }
 
 function tryParseJWT(token: string): Record<string, any> | string {
