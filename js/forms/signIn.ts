@@ -179,12 +179,12 @@ function instanceMatches(instance: HTMLElement, pattern: string): boolean {
     );
 }
 
-function createTokenEntryElements(instance: Instance) {
+function createTokenEntryElements(instance: Instance): HTMLDivElement {
     const heading = document.createElement("h3");
     heading.textContent = `Sign in to ${instance.name} with a token`;
 
     const explanation = document.createElement("div");
-    explanation.innerHTML = `Past your SciCat token from <a target="_blank" href="${instance.url}/user">${instance.url}/user</a> into the
+    explanation.innerHTML = `Paste your SciCat token from <a target="_blank" href="${instance.url}/user">${instance.url}/user</a> into the
     input below to sign in with the widget.`;
 
     const submitButton = iconTextButton(
@@ -208,7 +208,7 @@ function createTokenEntryElements(instance: Instance) {
     );
 
     input.container.addEventListener("input", () => {
-        submitButton.disabled = !input.value;
+        submitButton.disabled = !input.value || !input.isValid();
     });
     input.container.addEventListener("keydown", (e: KeyboardEvent) => {
         if (e.code === "Enter" || e.code === "NumpadEnter") {
@@ -216,8 +216,11 @@ function createTokenEntryElements(instance: Instance) {
         }
     });
 
-    const container = document.createElement("fieldset");
-    container.append(heading, explanation, label, input.container, submitButton);
+    const fieldset = document.createElement("fieldset");
+    fieldset.append(label, input.container, submitButton);
+
+    const container = document.createElement("div");
+    container.append(heading, explanation, fieldset);
     return container;
 }
 
