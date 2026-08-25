@@ -18,8 +18,9 @@ python - <<'PY'
 {test_script}
 PY
 """
+_PYTHON_VERSION = "3.14"
 
-BASE_PATH = Path("/home/jl/Work/cat/scicat_widget/envs")
+# BASE_PATH = Path("/home/jl/Work/cat/scicat_widget/envs")
 
 
 def _venv_activation_command(prefix: Path) -> str:
@@ -32,10 +33,88 @@ def _mamba_activation_command(prefix: Path) -> str:
     )
 
 
+def _call_program(args: list[str | Path]):
+    try:
+        _ = subprocess.run(  # noqa: S603
+            args,
+            capture_output=True,
+            check=True,
+            text=True,
+        )
+    except subprocess.CalledProcessError as error:
+        _print_captured_output(error)
+        raise
+
+
+def _pip_create_env(prefix: Path, programs: list[Program]) -> None:
+    _call_program(["python", "-m", "venv", prefix])
+    _call_program(
+        [
+            prefix / "bin" / "python",
+            "-m",
+            "pip",
+            "install",
+            "--prefix",
+            prefix,
+            *(f"{p.name}=={p.version}" for p in programs),
+        ]
+    )
+
+
+def _uv_create_env(prefix: Path, programs: list[Program]) -> None:
+    _call_program(["uv", "venv", "-p", _PYTHON_VERSION, prefix])
+    _call_program(
+        [
+            "uv",
+            "pip",
+            "install",
+            "-p",
+            _PYTHON_VERSION,
+            "--prefix",
+            prefix,
+            *(f"{p.name}=={p.version}" for p in programs),
+        ]
+    )
+
+
+def _mamba_create_env(prefix: Path, programs: list[Program]) -> None:
+    conda_programs = [p for p in programs if p.kind == ProgramKind.CONDA]
+    pip_programs = [p for p in programs if p.kind == ProgramKind.PIP]
+    if pip_programs:
+        conda_programs.append(
+            Program(name="pip", version="26.2.1", kind=ProgramKind.CONDA)
+        )
+    _call_program(
+        [
+            "mamba",
+            "create",
+            "--yes",
+            "-p",
+            prefix,
+            *(f"{p.name}={p.version}" for p in conda_programs),
+        ]
+    )
+    if pip_programs:
+        _call_program(
+            [
+                "mamba",
+                "run",
+                "-p",
+                prefix,
+                "python",
+                "-m",
+                "pip",
+                "install",
+                *(f"{p.name}=={p.version}" for p in pip_programs),
+            ]
+        )
+
+
 @dataclasses.dataclass(frozen=True)
 class _EnvSpec:
     name: str
     kind: EnvKind
+    creator: Callable[[Path, list[Program]], None]
     activator: Callable[[Path], str]
     programs: list[Program]
 
@@ -51,45 +130,58 @@ class _EnvSpec:
     def activation_command(self) -> str:
         return self.activator(self.prefix)
 
+    def create(self) -> None:
+        self.creator(self.prefix, self.programs)
+
 
 # TODO also need conda (not mamba)
-# TODO pick smaller, commonly used packages
 _ENV_SPECS = (
     _EnvSpec(
         name="mamba",
         kind=EnvKind.CONDA,
+        creator=_mamba_create_env,
         activator=_mamba_activation_command,
-        programs=[Program(name="requests", version="2.34.0", kind=ProgramKind.CONDA)],
+        programs=[Program(name="urllib3", version="2.7.0", kind=ProgramKind.CONDA)],
     ),
     _EnvSpec(
         name="mamba-pip",
         kind=EnvKind.CONDA,
+        creator=_mamba_create_env,
         activator=_mamba_activation_command,
         programs=[
-            Program(name="requests", version="2.34.0", kind=ProgramKind.CONDA),
-            Program(name="rich", version="15.0.0", kind=ProgramKind.PIP),
+            Program(name="urllib3", version="2.7.0", kind=ProgramKind.CONDA),
+            Program(name="pydantic", version="2.13.4", kind=ProgramKind.PIP),
         ],
     ),
     _EnvSpec(
         name="pip",
         kind=EnvKind.VENV,
+        creator=_pip_create_env,
         activator=_venv_activation_command,
-        programs=[Program(name="requests", version="2.34.0", kind=ProgramKind.PIP)],
+        programs=[Program(name="urllib3", version="2.7.0", kind=ProgramKind.PIP)],
     ),
     _EnvSpec(
         name="uv",
         kind=EnvKind.VENV,
+        creator=_uv_create_env,
         activator=_venv_activation_command,
-        programs=[Program(name="requests", version="2.34.0", kind=ProgramKind.PIP)],
+        programs=[Program(name="urllib3", version="2.7.0", kind=ProgramKind.PIP)],
     ),
-    # TODO pixi run and run run
+    # TODO pixi run and uv run
     #   they are different because they don't activate an env in the same shell
 )
 
 
-@pytest.fixture(params=_ENV_SPECS, ids=lambda spec: spec.name)
-def env_spec(request: pytest.FixtureRequest) -> _EnvSpec:
-    return dataclasses.replace(request.param, base_path=BASE_PATH)
+@pytest.fixture(scope="session", params=_ENV_SPECS, ids=lambda spec: spec.name)
+def env_spec(
+    request: pytest.FixtureRequest, tmp_path_factory: pytest.TempPathFactory
+) -> _EnvSpec:
+    # return dataclasses.replace(request.param, base_path=BASE_PATH)
+    raw: _EnvSpec = request.param
+    prefix = tmp_path_factory.mktemp(raw.name)
+    filled_in = dataclasses.replace(raw, base_path=prefix)
+    filled_in.create()
+    return filled_in
 
 
 # Test scripts import directly from _environment.py in the source directory.
@@ -126,7 +218,7 @@ print(detect_environment())
     assert kind == env_spec.kind
 
 
-def test_list_programs(env_spec: _ENV_SPECS) -> None:
+def test_list_programs(env_spec: _EnvSpec) -> None:
     py_script = """
 import json
 from _environment import list_programs
