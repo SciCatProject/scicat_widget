@@ -2,7 +2,7 @@ import { TextInput } from "../components/input";
 import { Instance } from "../models.ts";
 import scicatLogo from "../assets/img/SciCat_logo_icon.svg";
 import { createLabelFor } from "./util.ts";
-import { iconTextButton } from "../components";
+import { iconTextButton, simpleLink } from "../components";
 
 export class SignIn {
     readonly element: HTMLDivElement;
@@ -206,8 +206,9 @@ function createTokenEntryElements(
     heading.textContent = `Sign in to ${instance.name} with a token`;
 
     const explanation = document.createElement("div");
-    explanation.innerHTML = `Paste your SciCat token from <a target="_blank" href="${instance.url}/user">${instance.url}/user</a> into the
-    input below to sign in with the widget.`;
+    explanation.innerHTML = `Paste your SciCat token from
+    ${simpleLink(instance.url + "/user")}
+    into the input below to sign in with the widget.`;
 
     const submitButton = iconTextButton(
         "sign-in-alt",
@@ -223,7 +224,7 @@ function createTokenEntryElements(
     submitButton.disabled = true;
 
     const backButton = iconTextButton(
-        "sign-in-alt",
+        "chevron-left",
         "Back",
         onCancel,
         "Back to instance selection",
@@ -245,6 +246,7 @@ function createTokenEntryElements(
     );
     const tokenWarning = document.createElement("output");
     tokenWarning.className = "cean-warning";
+    input.container.append(tokenWarning); // append to input to get consistent height
 
     input.container.addEventListener("input", () => {
         tokenWarning.textContent = tokenAnalysis.get(input.value).warning ?? "";
@@ -257,9 +259,10 @@ function createTokenEntryElements(
     });
 
     const fieldset = document.createElement("fieldset");
-    fieldset.append(label, input.container, tokenWarning, buttonWrap);
+    fieldset.append(label, input.container, buttonWrap);
 
     const container = document.createElement("div");
+    container.className = "cean-token-entry";
     container.append(heading, explanation, fieldset);
     return container;
 }
