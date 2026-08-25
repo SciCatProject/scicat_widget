@@ -77,37 +77,40 @@ def _uv_create_env(prefix: Path, programs: list[Program]) -> None:
     )
 
 
-def _mamba_create_env(prefix: Path, programs: list[Program]) -> None:
-    conda_programs = [p for p in programs if p.kind == ProgramKind.CONDA]
-    pip_programs = [p for p in programs if p.kind == ProgramKind.PIP]
-    if pip_programs:
-        conda_programs.append(
-            Program(name="pip", version="26.2.1", kind=ProgramKind.CONDA)
-        )
-    _call_program(
-        [
-            "mamba",
-            "create",
-            "--yes",
-            "-p",
-            prefix,
-            *(f"{p.name}={p.version}" for p in conda_programs),
-        ]
-    )
-    if pip_programs:
+def _conda_create_env(conda: str) -> Callable[[Path, list[Program]], None]:
+    def impl(prefix: Path, programs: list[Program]) -> None:
+        conda_programs = [p for p in programs if p.kind == ProgramKind.CONDA]
+        pip_programs = [p for p in programs if p.kind == ProgramKind.PIP]
+        if pip_programs:
+            conda_programs.append(
+                Program(name="pip", version="26.2.1", kind=ProgramKind.CONDA)
+            )
         _call_program(
             [
-                "mamba",
-                "run",
+                conda,
+                "create",
+                "--yes",
                 "-p",
                 prefix,
-                "python",
-                "-m",
-                "pip",
-                "install",
-                *(f"{p.name}=={p.version}" for p in pip_programs),
+                *(f"{p.name}={p.version}" for p in conda_programs),
             ]
         )
+        if pip_programs:
+            _call_program(
+                [
+                    conda,
+                    "run",
+                    "-p",
+                    prefix,
+                    "python",
+                    "-m",
+                    "pip",
+                    "install",
+                    *(f"{p.name}=={p.version}" for p in pip_programs),
+                ]
+            )
+
+    return impl
 
 
 @dataclasses.dataclass(frozen=True)
@@ -134,19 +137,25 @@ class _EnvSpec:
         self.creator(self.prefix, self.programs)
 
 
-# TODO also need conda (not mamba)
 _ENV_SPECS = (
     _EnvSpec(
         name="mamba",
         kind=EnvKind.CONDA,
-        creator=_mamba_create_env,
+        creator=_conda_create_env("mamba"),
         activator=_mamba_activation_command,
         programs=[Program(name="urllib3", version="2.7.0", kind=ProgramKind.CONDA)],
     ),
     _EnvSpec(
-        name="mamba-pip",
+        name="conda",
         kind=EnvKind.CONDA,
-        creator=_mamba_create_env,
+        creator=_conda_create_env("conda"),
+        activator=_mamba_activation_command,
+        programs=[Program(name="urllib3", version="2.7.0", kind=ProgramKind.CONDA)],
+    ),
+    _EnvSpec(
+        name="mamba_pip",
+        kind=EnvKind.CONDA,
+        creator=_conda_create_env("mamba"),
         activator=_mamba_activation_command,
         programs=[
             Program(name="urllib3", version="2.7.0", kind=ProgramKind.CONDA),
