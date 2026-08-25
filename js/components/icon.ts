@@ -63,6 +63,7 @@ export function iconForFileType(fileType: FileType): LabIcon {
     }
 }
 const FA_ICONS = [
+    "chevron-left",
     "chevron-down",
     "external-link-alt",
     "folder-open",

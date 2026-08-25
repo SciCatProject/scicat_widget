@@ -904,3 +904,39 @@ input.cean-input, select.cean-input, textarea.cean-input {
         cursor: inherit;
     }
 }
+
+.cean-token-entry {
+    .cean-input-wrap {
+        display: grid;
+        grid-template-rows: auto 1.5em;
+    }
+
+    .cean-input-container {
+        grid-column: 1;
+        grid-row: 1;
+    }
+
+    .cean-status,
+    .cean-warning {
+        grid-column: 1;
+        grid-row: 2;
+        display: block;
+        min-height: 1.5em;
+        justify-self: start;
+        text-align: left;
+    }
+
+    .cean-status {
+        color: var(--jp-error-color2);
+    }
+
+
+    a {
+        color: var(--jp-content-link-color);
+
+        &:hover {
+            color: var(--jp-content-link-color);
+            text-decoration: underline;
+        }
+    }
+}
