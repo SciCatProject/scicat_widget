@@ -789,6 +789,10 @@ input.cean-input, select.cean-input, textarea.cean-input {
     gap: 10px;
 }
 
+.cean-error {
+    color: var(--jp-error-color1);
+}
+
 .cean-warning {
     color: var(--jp-warn-color1);
 }

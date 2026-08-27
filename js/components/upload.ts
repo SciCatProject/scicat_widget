@@ -1,4 +1,4 @@
-import { BackendComm, FieldError, ResUploadDataset } from "../comm";
+import { BackendComm, ResUploadDataset, UploadError } from "../comm";
 import { simpleLink, textElement } from "./output.ts";
 import { textButton } from "./button.ts";
 import { Dialog } from "./dialog.ts";
@@ -50,8 +50,8 @@ export class UploadComponent {
     }
 
     private onUploadResult(payload: ResUploadDataset) {
-        if (payload.errors !== undefined) {
-            this.showErrorDialog(payload.errors);
+        if (payload.error !== undefined) {
+            this.showErrorDialog(payload.error);
         } else {
             this.showSuccessDialog(
                 payload.datasetName,
@@ -126,30 +126,44 @@ ${link}?</p>
         this.dialog.footer.replaceChildren(abortButton);
     }
 
-    private showErrorDialog(errors: FieldError[]) {
+    private showErrorDialog(error: UploadError) {
         this.dialog.closeOnClickOutside = true;
         this.dialog.header.textContent = "Error";
 
+        const report = document.createElement("div");
+
         const intro = document.createElement("p");
         intro.textContent = "There were errors during the upload:";
+        report.append(intro);
 
-        const list = document.createElement("ul");
-        list.classList.add("cean-validation-error-list");
-        for (const error of errors) {
-            const name = document.createElement("strong");
-            name.textContent = error.field;
-            const message = document.createElement("span");
-            message.textContent = error.error;
-            const item = document.createElement("li");
-            item.append(name, message);
-            list.appendChild(item);
+        if (error.message !== undefined) {
+            const message = document.createElement("p");
+            message.className = "cean-error";
+            message.textContent = error.message;
+            report.append(message);
+        }
+
+        if (error.fieldErrors.length > 0) {
+            const fieldList = document.createElement("ul");
+            fieldList.classList.add("cean-validation-error-list");
+            for (const err of error.fieldErrors) {
+                const name = document.createElement("strong");
+                name.textContent = err.field;
+                const message = document.createElement("span");
+                message.textContent = err.error;
+                const item = document.createElement("li");
+                item.append(name, message);
+                fieldList.appendChild(item);
+            }
+            report.append(fieldList);
         }
 
         const detail = document.createElement("p");
         detail.textContent =
             "The dataset was not uploaded. Please fix the listed fields and try again.";
+        report.append(detail);
 
-        this.dialog.body.replaceChildren(intro, list, detail);
+        this.dialog.body.replaceChildren(report);
 
         const closeButton = textButton(
             "Close",
