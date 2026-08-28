@@ -9,11 +9,9 @@ import { iconForFileType } from "../icon.ts";
 export class MultiFileInput extends InputComponent<File[]> {
     private readonly newFileInput: FileInput;
     private readonly selectedContainer: HTMLDivElement;
-    private readonly selectedFiles: {
-        localPath: HTMLOutputElement;
-        remotePathInput: TextInput;
-        size: number;
-    }[] = [];
+    private readonly selectedFiles: FileItem[] = [];
+
+    private filesAreValid: boolean = true;
 
     constructor(key: string, comm: BackendComm, options: InputOptions<File[]>) {
         const [container, newFileInput, selectedContainer] = createBaseStructure(
@@ -37,6 +35,10 @@ export class MultiFileInput extends InputComponent<File[]> {
             });
             this.newFileInput.setSilent(null);
         }) as EventListener);
+
+        this.isValid = () => {
+            return this.filesAreValid;
+        };
     }
 
     destroy() {
@@ -88,13 +90,20 @@ export class MultiFileInput extends InputComponent<File[]> {
         });
     }
 
+    updated(userTriggered: boolean = true) {
+        this.validate_files();
+        super.updated(userTriggered);
+    }
+
     private addFileItem(file: File) {
-        const [container, localPath, remotePathInput] = createFileItem((p) => {
+        // TODO if file exists -> skip
+        const item = new FileItem((p) => {
             this.onInputRemoved(p);
         }, file);
 
-        this.selectedFiles.push({ localPath, remotePathInput, size: file.size ?? 0 });
-        this.selectedContainer.append(container);
+        this.selectedFiles.push(item);
+        this.selectedContainer.append(item.container);
+        this.updated();
     }
 
     private onInputRemoved(localPath: HTMLOutputElement) {
@@ -105,6 +114,27 @@ export class MultiFileInput extends InputComponent<File[]> {
             this.selectedFiles.splice(index, 1);
         }
         this.updated();
+    }
+
+    private validate_files(): string | null {
+        const byRemotePath = new Map();
+        for (const file of this.selectedFiles) {
+            const remotePath =
+                file.remotePathInput.value ?? file.remotePathInput.placeholder;
+            if (byRemotePath.has(remotePath)) {
+                byRemotePath.get(remotePath).push(file);
+            } else {
+                byRemotePath.set(remotePath, [file]);
+            }
+        }
+
+        for (const files of byRemotePath.values()) {
+            files.forEach((file: FileItem) => {
+                file.setValidity(files.length > 1 ? "Duplicate file name" : null);
+            });
+        }
+
+        return "bad file";
     }
 }
 
@@ -131,43 +161,77 @@ function createBaseStructure(
     return [fieldset, newFileInput, selectedContainer];
 }
 
-function createFileItem(
-    onInputRemoved: (x: HTMLOutputElement) => void,
-    file: File,
-): [HTMLFieldSetElement, HTMLOutputElement, TextInput] {
-    const fieldset = document.createElement("fieldset");
-    fieldset.className = "cean-selected-file-item";
+class FileItem {
+    readonly localPath: HTMLOutputElement;
+    readonly remotePathInput: TextInput;
+    readonly size: number;
 
-    const localPath = pathOutput(file.localPath);
-    const localPathLabel = createLabel(localPath, "localPath");
-    localPathLabel.htmlFor = localPath.id;
+    readonly container: HTMLFieldSetElement;
+    private readonly errorOutput: HTMLOutputElement;
 
-    const remotePathInput = new TextInput("remotePath", {});
-    remotePathInput.placeholder = file.remotePath ?? "";
-    const remotePathLabel = createLabelFor(remotePathInput);
+    constructor(onInputRemoved: (x: HTMLOutputElement) => void, file: File) {
+        const [fieldSet, localPath, remotePathInput, errorOutput] = FileItem.create(
+            onInputRemoved,
+            file,
+        );
+        this.localPath = localPath;
+        this.remotePathInput = remotePathInput;
+        this.size = file.size ?? 0;
+        this.container = fieldSet;
+        this.errorOutput = errorOutput;
+    }
 
-    const inputContainer = document.createElement("div");
-    inputContainer.classList.add("cean-input-grid");
-    inputContainer.append(
-        localPathLabel,
-        localPath,
-        remotePathLabel,
-        remotePathInput.container,
-    );
+    setValidity(message: string | null) {
+        this.errorOutput.textContent = message ?? "";
+        if (!message) {
+            this.errorOutput.style.display = "none";
+        } else {
+            this.errorOutput.style.display = "block";
+        }
+    }
 
-    const button = removeButton(() => {
-        fieldset.remove();
-        onInputRemoved(localPath);
-    });
+    private static create(
+        onInputRemoved: (x: HTMLOutputElement) => void,
+        file: File,
+    ): [HTMLFieldSetElement, HTMLOutputElement, TextInput, HTMLOutputElement] {
+        const fieldset = document.createElement("fieldset");
+        fieldset.className = "cean-selected-file-item";
 
-    const el = document.createElement("i");
-    el.classList.add("cean-file-icon");
-    iconForFileType(file.type).element({
-        container: el,
-        width: "2em",
-        height: "2em",
-    });
+        const localPath = pathOutput(file.localPath);
+        const localPathLabel = createLabel(localPath, "localPath");
+        localPathLabel.htmlFor = localPath.id;
 
-    fieldset.append(el, inputContainer, button);
-    return [fieldset, localPath, remotePathInput];
+        const remotePathInput = new TextInput("remotePath", {});
+        remotePathInput.placeholder = file.remotePath ?? "";
+        const remotePathLabel = createLabelFor(remotePathInput);
+
+        const errorOutput = document.createElement("output");
+        errorOutput.classList.add("cean-error");
+
+        const inputContainer = document.createElement("div");
+        inputContainer.classList.add("cean-input-grid");
+        inputContainer.append(
+            localPathLabel,
+            localPath,
+            remotePathLabel,
+            remotePathInput.container,
+            errorOutput,
+        );
+
+        const button = removeButton(() => {
+            fieldset.remove();
+            onInputRemoved(localPath);
+        });
+
+        const el = document.createElement("i");
+        el.classList.add("cean-file-icon");
+        iconForFileType(file.type).element({
+            container: el,
+            width: "2em",
+            height: "2em",
+        });
+
+        fieldset.append(el, inputContainer, button);
+        return [fieldset, localPath, remotePathInput, errorOutput];
+    }
 }

@@ -432,6 +432,12 @@ input.cean-input, select.cean-input, textarea.cean-input {
         /* Same as text inputs */
         padding: 0.2ch 0.5ch;
     }
+
+    .cean-error {
+        margin-top: -0.8em;
+        padding-top: 0;
+        grid-column: 2;
+    }
 }
 
 .cean-path {
