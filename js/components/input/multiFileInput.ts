@@ -4,7 +4,7 @@ import { removeButton } from "../index.ts";
 import { FileInput, InputComponent, TextInput } from "./index.ts";
 import { InputOptions } from "./inputComponent.ts";
 import { createLabel, createLabelFor, pathOutput } from "../../forms";
-import { iconForFileType } from "../icon.ts";
+import { createIcon, iconForFileType } from "../icon.ts";
 
 export class MultiFileInput extends InputComponent<File[]> {
     private readonly newFileInput: FileInput;
@@ -35,6 +35,10 @@ export class MultiFileInput extends InputComponent<File[]> {
             });
             this.newFileInput.setSilent(null);
         }) as EventListener);
+
+        this.selectedContainer.addEventListener("input-updated", () => {
+            this.updated(true);
+        });
 
         this.isValid = () => {
             return this.filesAreValid;
@@ -128,13 +132,19 @@ export class MultiFileInput extends InputComponent<File[]> {
             }
         }
 
+        let allValid = true;
         for (const files of byRemotePath.values()) {
+            const isDuplicate = files.length > 1;
+            if (isDuplicate) {
+                allValid = false;
+            }
             files.forEach((file: FileItem) => {
-                file.setValidity(files.length > 1 ? "Duplicate file name" : null);
+                file.setError(isDuplicate ? "Duplicate file name" : null);
             });
         }
+        this.filesAreValid = allValid;
 
-        return "bad file";
+        return this.filesAreValid ? null : "bad file";
     }
 }
 
@@ -168,32 +178,41 @@ class FileItem {
 
     readonly container: HTMLFieldSetElement;
     private readonly errorOutput: HTMLOutputElement;
+    private readonly warningIcon: HTMLElement;
 
     constructor(onInputRemoved: (x: HTMLOutputElement) => void, file: File) {
-        const [fieldSet, localPath, remotePathInput, errorOutput] = FileItem.create(
-            onInputRemoved,
-            file,
-        );
+        const [fieldSet, localPath, remotePathInput, errorOutput, warningIcon] =
+            FileItem.create(onInputRemoved, file);
         this.localPath = localPath;
         this.remotePathInput = remotePathInput;
         this.size = file.size ?? 0;
         this.container = fieldSet;
         this.errorOutput = errorOutput;
+        this.warningIcon = warningIcon;
+        this.setError(null);
     }
 
-    setValidity(message: string | null) {
+    setError(message: string | null) {
         this.errorOutput.textContent = message ?? "";
         if (!message) {
             this.errorOutput.style.display = "none";
+            this.warningIcon.style.display = "none";
         } else {
             this.errorOutput.style.display = "block";
+            this.warningIcon.style.display = "";
         }
     }
 
     private static create(
         onInputRemoved: (x: HTMLOutputElement) => void,
         file: File,
-    ): [HTMLFieldSetElement, HTMLOutputElement, TextInput, HTMLOutputElement] {
+    ): [
+        HTMLFieldSetElement,
+        HTMLOutputElement,
+        TextInput,
+        HTMLOutputElement,
+        HTMLElement,
+    ] {
         const fieldset = document.createElement("fieldset");
         fieldset.className = "cean-selected-file-item";
 
@@ -223,15 +242,23 @@ class FileItem {
             onInputRemoved(localPath);
         });
 
-        const el = document.createElement("i");
-        el.classList.add("cean-file-icon");
+        const iconContainer = document.createElement("div");
+        iconContainer.classList.add("cean-file-item-icons");
+
+        const fileIcon = document.createElement("i");
+        fileIcon.classList.add("cean-file-icon");
         iconForFileType(file.type).element({
-            container: el,
+            container: fileIcon,
             width: "2em",
             height: "2em",
         });
 
-        fieldset.append(el, inputContainer, button);
-        return [fieldset, localPath, remotePathInput, errorOutput];
+        const warningIcon = createIcon("exclamation-triangle");
+        warningIcon.classList.add("cean-warning", "cean-file-warning-icon");
+
+        iconContainer.append(fileIcon, warningIcon);
+
+        fieldset.append(iconContainer, inputContainer, button);
+        return [fieldset, localPath, remotePathInput, errorOutput, warningIcon];
     }
 }
