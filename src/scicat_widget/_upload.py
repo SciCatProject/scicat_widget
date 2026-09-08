@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, Field, ValidationError
 from scitacean import PID, Client, Dataset, File, Thumbnail, model
 
 
@@ -15,7 +15,7 @@ def upload_dataset(
         return client.upload_new_dataset_now(dataset)
     except ValidationError as error:
         return UploadError(
-            errors=[
+            field_errors=[
                 FieldError(field=str(err["loc"][0]), error=err["msg"])
                 for err in error.errors()
             ]
@@ -23,9 +23,11 @@ def upload_dataset(
     except ValueError as error:
         if "cannot determine source_folder" in error.args[0].lower():
             return UploadError(
-                errors=[FieldError(field="sourceFolder", error="Field required")]
+                field_errors=[FieldError(field="sourceFolder", error="Field required")]
             )
-        raise
+        return UploadError(message=",".join(error.args))
+    except Exception as error:
+        return UploadError(message=",".join(error.args))
 
 
 class FieldError(BaseModel, extra="forbid"):
@@ -34,7 +36,10 @@ class FieldError(BaseModel, extra="forbid"):
 
 
 class UploadError(BaseModel, extra="forbid"):
-    errors: list[FieldError]
+    message: str | None = None
+    field_errors: list[FieldError] = Field(
+        default_factory=list, serialization_alias="fieldErrors"
+    )
 
 
 def make_dataset_from_widget_data(data: dict[str, Any]) -> Dataset:

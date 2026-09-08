@@ -142,7 +142,7 @@ def _upload_dataset(
                 {
                     "type": "res:upload-dataset",
                     "key": key,
-                    "payload": error.model_dump(),
+                    "payload": {"error": error.model_dump(by_alias=True)},
                 }
             )
 

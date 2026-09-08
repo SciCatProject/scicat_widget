@@ -35,11 +35,6 @@ export type ResBuildField = {
 
 export type ReqUploadDataset = Record<string, any>;
 
-export type FieldError = {
-    field: string;
-    error: string;
-};
-
 export type ReqLoadImage = {
     path: string;
     caption?: string;
@@ -52,11 +47,21 @@ export type ResLoadImage = {
     error?: string;
 };
 
+export type FieldError = {
+    field: string;
+    error: string;
+};
+
+export type UploadError = {
+    message?: string;
+    fieldErrors: FieldError[];
+};
+
 export type ResUploadDataset = {
     datasetName: string;
     pid?: string;
     datasetUrl?: string;
-    errors?: FieldError[];
+    error?: UploadError;
 };
 
 export class BackendComm {
