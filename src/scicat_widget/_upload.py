@@ -10,7 +10,12 @@ def upload_dataset(
     client: Client, widget_data: dict[str, object]
 ) -> Dataset | UploadError:
     # TODO check instrument, seem to be NOne
-    dataset = make_dataset_from_widget_data(widget_data)
+    try:
+        dataset = make_dataset_from_widget_data(widget_data)
+    except ValueError as error:
+        return UploadError(
+            message="Unable to construct dataset: " + ",".join(error.args)
+        )
     try:
         return client.upload_new_dataset_now(dataset)
     except ValidationError as error:
