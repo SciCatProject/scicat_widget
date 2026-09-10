@@ -35,15 +35,16 @@ export type ResBuildField = {
 
 export type ReqUploadDataset = Record<string, any>;
 
-export type ReqLoadImage = {
+export type ReqLoadAttachment = {
     path: string;
     caption?: string;
 };
 
-export type ResLoadImage = {
+export type ResLoadAttachment = {
     path: string;
+    type: FileType;
     caption?: string;
-    image?: string;
+    data?: string;
     error?: string;
 };
 
@@ -128,16 +129,16 @@ export class BackendComm {
         this.getForMethod("res:upload-dataset").set(key, callback);
     }
 
-    sendReqLoadImage(key: string, payload: ReqLoadImage) {
-        this.model.send({ type: "req:load-image", key, payload });
+    sendReqLoadAttachment(key: string, payload: ReqLoadAttachment) {
+        this.model.send({ type: "req:load-attachment", key, payload });
     }
 
-    onResLoadImage(key: string, callback: (payload: ResLoadImage) => void) {
-        this.getForMethod("res:load-image").set(key, callback);
+    onResLoadAttachment(key: string, callback: (payload: ResLoadAttachment) => void) {
+        this.getForMethod("res:load-attachment").set(key, callback);
     }
 
-    offResLoadImage(key: string) {
-        this.getForMethod("res:load-image").delete(key);
+    offResLoadAttachment(key: string) {
+        this.getForMethod("res:load-attachment").delete(key);
     }
 
     private getForMethod(method: string) {

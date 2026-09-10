@@ -487,12 +487,9 @@ input.cean-input, select.cean-input, textarea.cean-input {
             max-height: 100%;
         }
 
-        .cean-bad-image-placeholder {
+        .cean-file-icon {
             color: var(--jp-content-font-color2);
-        }
-
-        &:has(.cean-bad-image-placeholder) {
-            background-color: var(--jp-layout-color3);
+            width: 50%;
         }
     }
 

@@ -14,7 +14,7 @@ import IPython.display
 from jupyter_host_file_picker import HostFilePicker
 from scitacean import Dataset, Thumbnail
 
-from ._filesystem import inspect_file
+from ._filesystem import deduce_file_type, inspect_file
 from ._logging import get_logger
 from ._upload import UploadError, upload_dataset
 
@@ -94,7 +94,7 @@ def _build_field(
     )
 
 
-def _load_image(
+def _load_attachment(
     widget: DatasetUploadWidget, key: str, input_payload: dict[str, str]
 ) -> None:
     path = Path(input_payload.get("path", ""))
@@ -104,16 +104,17 @@ def _load_image(
         payload = {"error": "File not found"}
     else:
         payload = {
-            "image": thumbnail.serialize(),
+            "data": thumbnail.serialize(),
+            "type": deduce_file_type(path),
             "caption": input_payload.get("caption", path.stem),
         }
 
     widget.send(
         {
-            "type": "res:load-image",
+            "type": "res:load-attachment",
             "key": key,
             # Echo the input to identify the element that the request came from.
-            "payload": {**payload, **input_payload},
+            "payload": {**input_payload, **payload},
         }
     )
 
@@ -151,7 +152,7 @@ _EVENT_HANDLERS = {
     "req:browse-files": _browse_files,
     "req:build-field": _build_field,
     "req:inspect-file": _inspect_file,
-    "req:load-image": _load_image,
+    "req:load-attachment": _load_attachment,
     "req:upload-dataset": _upload_dataset,
 }
 

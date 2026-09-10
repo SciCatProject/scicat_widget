@@ -1,10 +1,11 @@
 import { InputComponent, InputOptions, UpdateEvent } from "./inputComponent.ts";
 import { Attachment } from "../../models.ts";
-import { BackendComm, ResLoadImage } from "../../comm.ts";
+import { BackendComm, ResLoadAttachment } from "../../comm.ts";
 import { FileInput } from "./fileInput.ts";
 import { createLabelFor, pathOutput } from "../../forms";
 import { TextInput } from "./textInput.ts";
 import { removeButton } from "../button.ts";
+import { FileType, iconForFileType } from "../icon.ts";
 
 export class MultiAttachmentInput extends InputComponent<Attachment[]> {
     private readonly newAttachmentInput: FileInput;
@@ -33,23 +34,29 @@ export class MultiAttachmentInput extends InputComponent<Attachment[]> {
             const data = this.newAttachmentInput.inspectionResult;
             if (data === null) return;
             if (data.success) {
-                this.loadImage(data.filename);
+                this.loadAttachment(data.filename);
             }
         }) as EventListener);
 
-        this.comm.onResLoadImage(this.key, (response) => {
-            this.handleLoadImage(response);
+        this.comm.onResLoadAttachment(this.key, (response) => {
+            this.handleLoadAttachment(response);
         });
     }
 
     destroy() {
-        this.comm.offResLoadImage(this.key);
+        this.comm.offResLoadAttachment(this.key);
     }
 
     setSilent(value: Attachment[] | null) {
         this.clear();
         for (const attachment of value || []) {
-            this.addAttachment(null, attachment.data, attachment.caption, false);
+            this.addAttachment(
+                null,
+                attachment.data,
+                "file",
+                attachment.caption,
+                false,
+            );
         }
     }
 
@@ -86,18 +93,23 @@ export class MultiAttachmentInput extends InputComponent<Attachment[]> {
         this.errorOutput.value = "";
     }
 
-    private loadImage(path: string, caption?: string) {
-        this.comm.sendReqLoadImage(this.key, { path, caption });
+    private loadAttachment(path: string, caption?: string) {
+        this.comm.sendReqLoadAttachment(this.key, { path, caption });
         this.errorOutput.value = "";
     }
 
-    private handleLoadImage(response: ResLoadImage) {
+    private handleLoadAttachment(response: ResLoadAttachment) {
         if (response.error) {
             this.errorOutput.value = `Failed to load file '${response.path}': ${response.error}`;
-        } else if (!response.image) {
-            this.errorOutput.value = `Failed to load file '${response.path}': Received no image`;
+        } else if (!response.data) {
+            this.errorOutput.value = `Failed to load file '${response.path}': Received no data`;
         } else {
-            this.addAttachment(response.path, response.image, response.caption ?? "");
+            this.addAttachment(
+                response.path,
+                response.data,
+                response.type,
+                response.caption ?? "",
+            );
         }
         this.updated();
     }
@@ -105,6 +117,7 @@ export class MultiAttachmentInput extends InputComponent<Attachment[]> {
     private addAttachment(
         path: string | null,
         data: string,
+        type: FileType,
         caption: string | undefined,
         captionIsPlaceholder: boolean = true,
     ) {
@@ -112,6 +125,7 @@ export class MultiAttachmentInput extends InputComponent<Attachment[]> {
         const view = new AttachmentView(
             path,
             data,
+            type,
             caption ?? "",
             this.removeAttachment.bind(this),
             captionIsPlaceholder,
@@ -137,6 +151,7 @@ class AttachmentView {
     constructor(
         path: string | null,
         data: string,
+        type: FileType,
         caption: string,
         onRemove: (view: AttachmentView) => void,
         captionIsPlaceholder: boolean = true,
@@ -166,7 +181,7 @@ class AttachmentView {
 
         const imageContainer = document.createElement("div");
         imageContainer.classList = "cean-image-container";
-        imageContainer.append(makeImg(data));
+        imageContainer.append(makeImg(data, type));
 
         const button = removeButton(() => {
             onRemove(this);
@@ -194,17 +209,21 @@ class AttachmentView {
     }
 }
 
-function makeImg(src: string): HTMLImageElement | HTMLDivElement {
+function makeImg(src: string, type: FileType): HTMLElement {
     if (src.startsWith("data:image/")) {
         const img = document.createElement("img");
         img.src = src;
         img.alt = "Image";
         return img;
     } else {
-        const placeholder = document.createElement("div");
-        placeholder.classList = "cean-bad-image-placeholder";
-        placeholder.textContent = "Cannot display image";
-        return placeholder;
+        const icon = document.createElement("i");
+        icon.classList.add("cean-file-icon");
+        iconForFileType(type).element({
+            container: icon,
+            width: "100%",
+            height: "100%",
+        });
+        return icon;
     }
 }
 
