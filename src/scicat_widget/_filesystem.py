@@ -17,7 +17,7 @@ def inspect_file(path: Path) -> dict[str, str | int | bool | datetime] | None:
         "size": file.size,
         "creationTime": file.creation_time,
         "remotePath": file.remote_path.posix,
-        "type": _deduce_file_type(path),
+        "type": deduce_file_type(path),
     }
 
 
@@ -32,7 +32,7 @@ _KNOWN_MIMETYPES = {
 }
 
 
-def _deduce_file_type(path: Path) -> str:
+def deduce_file_type(path: Path) -> str:
     """Deduce the file type from the mimetype and extension.
 
     The returned type string matches the types recognized by the TypeScript code.
