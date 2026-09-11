@@ -35,7 +35,11 @@ def skip_unless_enabled(pytestconfig: pytest.Config) -> None:
 
 
 def _venv_runner(prefix: Path) -> list[str]:
-    return [os.fspath(prefix.joinpath("bin", "python"))]
+    if os.name == "nt":
+        python = prefix / "Scripts" / "python.exe"
+    else:
+        python = prefix / "bin" / "python"
+    return [os.fspath(python)]
 
 
 def _uv_runner(prefix: Path) -> list[str]:

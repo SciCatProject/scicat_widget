@@ -51,6 +51,7 @@ def detect_environment() -> EnvKind:
     # Favor pixi because it gives better information and is faster.
     if "PIXI_PROJECT_MANIFEST" in os.environ:
         return EnvKind.PIXI
+    # Check for conda before venv because conda envs are also venvs.
     if _in_conda_env():
         return EnvKind.CONDA
     if _in_virtual_env():
