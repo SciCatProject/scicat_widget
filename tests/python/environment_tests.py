@@ -3,11 +3,13 @@
 These tests require
     - conda
     - mamba
+    - pixi
     - uv
 
 If they are installed but cannot be found automatically, set the environment variables:
     - SCITACEAN_CONDA_EXECUTABLE
     - SCITACEAN_MAMBA_EXECUTABLE
+    - SCITACEAN_PIXI_EXECUTABLE
     - SCITACEAN_UV_EXECUTABLE
 """
 
@@ -30,6 +32,26 @@ def _venv_runner(prefix: Path) -> list[str]:
     return [os.fspath(prefix.joinpath("bin", "python"))]
 
 
+def _uv_runner(prefix: Path) -> list[str]:
+    return [
+        require_program("uv"),
+        "run",
+        "-p",
+        os.fspath(prefix.joinpath("bin", "python")),
+        "python",
+    ]
+
+
+def _pixi_runner(prefix: Path) -> list[str]:
+    return [
+        require_program("pixi"),
+        "run",
+        "-m",
+        os.fspath(prefix),
+        "python",
+    ]
+
+
 def _conda_runner(conda: str) -> Callable[[Path], list[str]]:
     def impl(prefix: Path) -> list[str]:
         return [require_program(conda), "run", "-p", os.fspath(prefix), "python"]
@@ -37,13 +59,10 @@ def _conda_runner(conda: str) -> Callable[[Path], list[str]]:
     return impl
 
 
-def _call_program(args: list[str | Path]):
+def _call_program(args: list[str | Path], cwd: Path | None = None):
     try:
         _ = subprocess.run(  # noqa: S603
-            args,
-            capture_output=True,
-            check=True,
-            text=True,
+            args, capture_output=True, check=True, text=True, cwd=cwd
         )
     except subprocess.CalledProcessError as error:
         _print_captured_output(error)
@@ -80,6 +99,31 @@ def _uv_create_env(prefix: Path, programs: list[Program]) -> None:
             *(f"{p.name}=={p.version}" for p in programs),
         ]
     )
+
+
+def _pixi_create_env(prefix: Path, programs: list[Program]) -> None:
+    prefix.mkdir(parents=True, exist_ok=False)
+    dependencies = "\n".join(
+        f'{p.name} = "=={p.version}"' for p in programs if p.kind == ProgramKind.CONDA
+    )
+    pypi_dependencies = "\n".join(
+        f'{p.name} = "=={p.version}"' for p in programs if p.kind == ProgramKind.PIP
+    )
+    prefix.joinpath("pixi.toml").write_text(f"""
+[workspace]
+authors = []
+channels = ["conda-forge"]
+name = "pixi"
+version = "1.0"
+platforms = ["linux-64", "osx-64", "osx-arm64", "win-64"]
+[dependencies]
+{dependencies}
+[pypi-dependencies]
+{pypi_dependencies}
+""")
+
+    pixi = require_program("pixi")
+    _call_program([pixi, "install"], cwd=prefix)
 
 
 def _conda_create_env(conda: str) -> Callable[[Path, list[Program]], None]:
@@ -182,8 +226,30 @@ _ENV_SPECS = (
         python_runner=_venv_runner,
         programs=[Program(name="urllib3", version="2.7.0", kind=ProgramKind.PIP)],
     ),
-    # TODO pixi run and uv run
-    #   they are different because they don't activate an env in the same shell
+    _EnvSpec(
+        name="uv_run",
+        kind=EnvKind.VENV,
+        creator=_uv_create_env,
+        python_runner=_uv_runner,
+        programs=[Program(name="urllib3", version="2.7.0", kind=ProgramKind.PIP)],
+    ),
+    _EnvSpec(
+        name="pixi",
+        kind=EnvKind.PIXI,
+        creator=_pixi_create_env,
+        python_runner=_pixi_runner,
+        programs=[Program(name="urllib3", version="2.7.0", kind=ProgramKind.CONDA)],
+    ),
+    _EnvSpec(
+        name="pixi_pip",
+        kind=EnvKind.PIXI,
+        creator=_pixi_create_env,
+        python_runner=_pixi_runner,
+        programs=[
+            Program(name="urllib3", version="2.7.0", kind=ProgramKind.CONDA),
+            Program(name="pydantic", version="2.13.4", kind=ProgramKind.PIP),
+        ],
+    ),
 )
 
 
