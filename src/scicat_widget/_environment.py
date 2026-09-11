@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright (c) 2026 SciCat Project (https://github.com/SciCatProject/scitacean)
 
+"""Environment detection and inspection."""
+
 # IMPORTANT
 # This module must not import 3rd part modules or from the rest of scicat_widget
 # because it is used for tests in isolated environments.
@@ -32,13 +34,32 @@ class Program:
 
 
 class EnvKind(StrEnum):
+    """The type of a Python (virtual) environment."""
+
     VENV = "venv"
+    """A regular virtual Python environment.
+
+    Might be managed by pip, uv, or another compatible tool.
+    """
     CONDA = "conda"
+    """A conda environment.
+
+    Might be managed by conda, mamba, micromamba, or, in principle pixi.
+    But the ``PIXI`` env kind is preferred.
+    """
     PIXI = "pixi"
+    """A pixi environment.
+
+    Technically a conda environment but inspecting it with pixi is more efficient
+    and provides more information. So we treat it as a separate kind of environment.
+    """
     SYSTEM = "system"
+    """Global or user environment."""
 
 
-class _PackageManager(StrEnum):
+class PackageManager(StrEnum):
+    """A Python package manager."""
+
     PIP = "pip"
     UV = "uv"
     CONDA = "conda"
@@ -74,22 +95,36 @@ def _in_virtual_env() -> bool:
     return sys.base_prefix != sys.prefix
 
 
-# TODO add env prefix arg
-# TODO add package manager arg (and test with pip even when uv is available)
 @lru_cache
-def list_programs() -> list[Program]:
-    """List installed programs in the environment."""
-    env_kind = detect_environment()
-    match _determine_env_package_manager(env_kind):
-        case _PackageManager.PIP:
+def list_programs(package_manager: PackageManager | None = None) -> list[Program]:
+    """List installed programs in the environment.
+
+    Uses a package manager to list the installed packages in the environment
+    that this Python process is running in.
+
+    Parameters
+    ----------
+    package_manager:
+        Use the specified type of package manager.
+        By default, this is deduced from the active environment.
+
+    Returns
+    -------
+    :
+        A list of all programs in the current environment.
+    """
+    manager = package_manager or _determine_env_package_manager(detect_environment())
+
+    match manager:
+        case PackageManager.PIP:
             return _list_pip_packages()
-        case _PackageManager.UV:
+        case PackageManager.UV:
             return _list_uv_packages()
-        case _PackageManager.CONDA:
+        case PackageManager.CONDA:
             return _list_conda_packages("conda")
-        case _PackageManager.MAMBA:
+        case PackageManager.MAMBA:
             return _list_conda_packages("mamba")
-        case _PackageManager.PIXI:
+        case PackageManager.PIXI:
             return _list_pixi_packages()
 
 
@@ -169,16 +204,16 @@ def _run_external_program_lister(command: list[str], name: str) -> Any:
         return []
 
 
-def _determine_env_package_manager(env_kind: EnvKind) -> _PackageManager:
+def _determine_env_package_manager(env_kind: EnvKind) -> PackageManager:
     match env_kind:
         case EnvKind.VENV | EnvKind.SYSTEM:
             # Prefer uv over pip because it is faster
-            return _PackageManager.UV if locate_uv() else _PackageManager.PIP
+            return PackageManager.UV if locate_uv() else PackageManager.PIP
         case EnvKind.CONDA:
             # Prefer mamba over conda because it is faster
-            return _PackageManager.MAMBA if locate_mamba() else _PackageManager.CONDA
+            return PackageManager.MAMBA if locate_mamba() else PackageManager.CONDA
         case EnvKind.PIXI:
-            return _PackageManager.PIXI
+            return PackageManager.PIXI
 
 
 # Duplicate of logging.get_logger to avoid importing from other modules

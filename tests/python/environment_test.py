@@ -184,6 +184,7 @@ class _EnvSpec:
     creator: Callable[[Path, list[Program]], None]
     python_runner: Callable[[Path], list[str]]
     programs: list[Program]
+    package_manager: str | None = None
 
     base_path: Path | None = None
 
@@ -227,6 +228,7 @@ _ENV_SPECS = (
         creator=_pip_create_env,
         python_runner=_venv_runner,
         programs=[Program(name="rich", version="15.0.0", kind=ProgramKind.PIP)],
+        package_manager="pip",  # It would use uv by default
     ),
     _EnvSpec(
         name="uv",
@@ -310,13 +312,19 @@ print(detect_environment())
 
 
 def test_list_programs(env_spec: _EnvSpec) -> None:
+    package_manager_arg = (
+        f"PackageManager.{env_spec.package_manager.upper()}"
+        if env_spec.package_manager
+        else ""
+    )
+
     py_script = f"""
 import sys
 sys.path.append({os.fspath(source_working_dir())!r})
 
 import json
-from _environment import list_programs
-programs = list_programs()
+from _environment import list_programs, PackageManager
+programs = list_programs({package_manager_arg})
 print(json.dumps([
     {{"name": program.name, "version": program.version, "kind": program.kind.value}}
     for program in programs
