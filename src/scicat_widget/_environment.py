@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026 SciCat Project (https://github.com/SciCatProject/scitacean)
+
 # IMPORTANT
 # This module must not import 3rd part modules or from the rest of scicat_widget
 # because it is used for tests in isolated environments.

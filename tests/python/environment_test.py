@@ -28,6 +28,12 @@ from scicat_widget._environment import EnvKind, Program, ProgramKind, require_pr
 _PYTHON_VERSION = "3.14"
 
 
+@pytest.fixture(scope="session")
+def skip_unless_enabled(pytestconfig: pytest.Config) -> None:
+    if not pytestconfig.getoption("--env-tests"):
+        pytest.skip("Environment tests are not enabled")
+
+
 def _venv_runner(prefix: Path) -> list[str]:
     return [os.fspath(prefix.joinpath("bin", "python"))]
 
@@ -255,7 +261,9 @@ _ENV_SPECS = (
 
 @pytest.fixture(scope="session", params=_ENV_SPECS, ids=lambda spec: spec.name)
 def env_spec(
-    request: pytest.FixtureRequest, tmp_path_factory: pytest.TempPathFactory
+    request: pytest.FixtureRequest,
+    tmp_path_factory: pytest.TempPathFactory,
+    skip_unless_enabled: None,
 ) -> _EnvSpec:
     # return dataclasses.replace(request.param, base_path=BASE_PATH)
     raw: _EnvSpec = request.param
