@@ -204,32 +204,6 @@ def locate_mamba() -> str | None:
     return _locate_program("mamba")
 
 
-def locate_conda() -> str | None:
-    """Find the path to the conda executable if it is available.
-
-    Returns
-    -------
-    :
-        - ``SCITACEAN_CONDA_EXECUTABLE`` if it is set
-        - A ``conda`` executable on ``PATH`` if it exists
-        - ``None`` otherwise.
-    """
-    return _locate_program("conda")
-
-
-def locate_pixi() -> str | None:
-    """Find the path to the pixi executable if it is available.
-
-    Returns
-    -------
-    :
-        - ``SCITACEAN_PIXI_EXECUTABLE`` if it is set
-        - A ``pixi`` executable on ``PATH`` if it exists
-        - ``None`` otherwise.
-    """
-    return _locate_program("pixi")
-
-
 def _locate_program(name: str) -> str | None:
     if override := os.environ.get(_program_env_var(name)):
         return override
