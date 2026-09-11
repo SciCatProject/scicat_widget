@@ -1,3 +1,16 @@
+"""Test environment inspection.
+
+These tests require
+    - conda
+    - mamba
+    - uv
+
+If they are installed but cannot be found automatically, set the environment variables:
+    - SCITACEAN_CONDA_EXECUTABLE
+    - SCITACEAN_MAMBA_EXECUTABLE
+    - SCITACEAN_UV_EXECUTABLE
+"""
+
 import dataclasses
 import json
 import os
@@ -8,29 +21,20 @@ from typing import Any
 
 import pytest
 
-from scicat_widget._environment import EnvKind, Program, ProgramKind
+from scicat_widget._environment import EnvKind, Program, ProgramKind, require_program
 
-_TEST_BASH_SCRIPT_TEMPLATE = """
-set -euo pipefail
-{activation}
-cd {working_dir}
-python - <<'PY'
-{test_script}
-PY
-"""
 _PYTHON_VERSION = "3.14"
 
-# BASE_PATH = Path("/home/jl/Work/cat/scicat_widget/envs")
+
+def _venv_runner(prefix: Path) -> list[str]:
+    return [os.fspath(prefix.joinpath("bin", "python"))]
 
 
-def _venv_activation_command(prefix: Path) -> str:
-    return f"source {os.fspath(prefix / 'bin' / 'activate')}"
+def _conda_runner(conda: str) -> Callable[[Path], list[str]]:
+    def impl(prefix: Path) -> list[str]:
+        return [require_program(conda), "run", "-p", os.fspath(prefix), "python"]
 
-
-def _mamba_activation_command(prefix: Path) -> str:
-    return (
-        f'eval "$(mamba shell hook --shell bash)"; mamba activate {os.fspath(prefix)}'
-    )
+    return impl
 
 
 def _call_program(args: list[str | Path]):
@@ -62,10 +66,11 @@ def _pip_create_env(prefix: Path, programs: list[Program]) -> None:
 
 
 def _uv_create_env(prefix: Path, programs: list[Program]) -> None:
-    _call_program(["uv", "venv", "-p", _PYTHON_VERSION, prefix])
+    uv = require_program("uv")
+    _call_program([uv, "venv", "-p", _PYTHON_VERSION, prefix])
     _call_program(
         [
-            "uv",
+            uv,
             "pip",
             "install",
             "-p",
@@ -78,6 +83,8 @@ def _uv_create_env(prefix: Path, programs: list[Program]) -> None:
 
 
 def _conda_create_env(conda: str) -> Callable[[Path, list[Program]], None]:
+    conda = require_program(conda)
+
     def impl(prefix: Path, programs: list[Program]) -> None:
         conda_programs = [p for p in programs if p.kind == ProgramKind.CONDA]
         pip_programs = [p for p in programs if p.kind == ProgramKind.PIP]
@@ -118,7 +125,7 @@ class _EnvSpec:
     name: str
     kind: EnvKind
     creator: Callable[[Path, list[Program]], None]
-    activator: Callable[[Path], str]
+    python_runner: Callable[[Path], list[str]]
     programs: list[Program]
 
     base_path: Path | None = None
@@ -129,9 +136,8 @@ class _EnvSpec:
             raise ValueError("Base path has not been set")
         return self.base_path / self.name
 
-    @property
-    def activation_command(self) -> str:
-        return self.activator(self.prefix)
+    def make_command(self, args: list[str]) -> list[str]:
+        return [*self.python_runner(self.prefix), *args]
 
     def create(self) -> None:
         self.creator(self.prefix, self.programs)
@@ -142,21 +148,21 @@ _ENV_SPECS = (
         name="mamba",
         kind=EnvKind.CONDA,
         creator=_conda_create_env("mamba"),
-        activator=_mamba_activation_command,
+        python_runner=_conda_runner("mamba"),
         programs=[Program(name="urllib3", version="2.7.0", kind=ProgramKind.CONDA)],
     ),
     _EnvSpec(
         name="conda",
         kind=EnvKind.CONDA,
         creator=_conda_create_env("conda"),
-        activator=_mamba_activation_command,
+        python_runner=_conda_runner("conda"),
         programs=[Program(name="urllib3", version="2.7.0", kind=ProgramKind.CONDA)],
     ),
     _EnvSpec(
         name="mamba_pip",
         kind=EnvKind.CONDA,
         creator=_conda_create_env("mamba"),
-        activator=_mamba_activation_command,
+        python_runner=_conda_runner("mamba"),
         programs=[
             Program(name="urllib3", version="2.7.0", kind=ProgramKind.CONDA),
             Program(name="pydantic", version="2.13.4", kind=ProgramKind.PIP),
@@ -166,14 +172,14 @@ _ENV_SPECS = (
         name="pip",
         kind=EnvKind.VENV,
         creator=_pip_create_env,
-        activator=_venv_activation_command,
+        python_runner=_venv_runner,
         programs=[Program(name="urllib3", version="2.7.0", kind=ProgramKind.PIP)],
     ),
     _EnvSpec(
         name="uv",
         kind=EnvKind.VENV,
         creator=_uv_create_env,
-        activator=_venv_activation_command,
+        python_runner=_venv_runner,
         programs=[Program(name="urllib3", version="2.7.0", kind=ProgramKind.PIP)],
     ),
     # TODO pixi run and uv run
@@ -206,17 +212,13 @@ def test_detect_environment_kind(env_spec: _EnvSpec) -> None:
 from _environment import detect_environment
 print(detect_environment())
 """
-    script = _TEST_BASH_SCRIPT_TEMPLATE.format(
-        activation=env_spec.activation_command,
-        working_dir=source_working_dir(),
-        test_script=py_script,
-    )
     try:
         result = subprocess.run(  # noqa: S603
-            ["bash", "-c", script],  # noqa: S607
+            env_spec.make_command(["-c", py_script]),
             check=True,
             text=True,
             capture_output=True,
+            cwd=source_working_dir(),
         )
     except subprocess.CalledProcessError as error:
         _print_captured_output(error)
@@ -237,17 +239,13 @@ print(json.dumps([
     for program in programs
 ]))
 """
-    script = _TEST_BASH_SCRIPT_TEMPLATE.format(
-        activation=env_spec.activation_command,
-        working_dir=source_working_dir(),
-        test_script=py_script,
-    )
     try:
         result = subprocess.run(  # noqa: S603
-            ["bash", "-c", script],  # noqa: S607
+            env_spec.make_command(["-c", py_script]),
             check=True,
             text=True,
             capture_output=True,
+            cwd=source_working_dir(),
         )
     except subprocess.CalledProcessError as error:
         _print_captured_output(error)

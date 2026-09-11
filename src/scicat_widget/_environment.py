@@ -77,9 +77,9 @@ def list_programs() -> list[Program]:
     env_kind = detect_environment()
     match _determine_env_package_manager(env_kind):
         case _PackageManager.PIP:
-            return _list_pip_packages("pip")
+            return _list_pip_packages()
         case _PackageManager.UV:
-            return _list_pip_packages("uv")
+            return _list_uv_packages()
         case _PackageManager.CONDA:
             return _list_conda_packages("conda")
         case _PackageManager.MAMBA:
@@ -88,9 +88,9 @@ def list_programs() -> list[Program]:
             return _list_pixi_packages()
 
 
-def _list_pip_packages(manager: str) -> list[Program]:
+def _list_pip_packages() -> list[Program]:
     raw = _run_external_program_lister(
-        [manager, "pip", "list", "--format=json"], name=manager
+        [sys.executable, "-m", "pip", "list", "--format=json"], name="pip"
     )
     return [
         Program(name=item["name"], version=item["version"], kind=ProgramKind.PIP)
@@ -98,8 +98,18 @@ def _list_pip_packages(manager: str) -> list[Program]:
     ]
 
 
+def _list_uv_packages() -> list[Program]:
+    uv = require_program("uv")
+    raw = _run_external_program_lister([uv, "pip", "list", "--format=json"], name="uv")
+    return [
+        Program(name=item["name"], version=item["version"], kind=ProgramKind.PIP)
+        for item in raw
+    ]
+
+
 def _list_conda_packages(manager: str) -> list[Program]:
-    raw = _run_external_program_lister([manager, "list", "--json"], name=manager)
+    conda = require_program(manager)
+    raw = _run_external_program_lister([conda, "list", "--json"], name=manager)
     # Conda lists channel="pypi" for pip packages. But probably only if they are from
     # pypi.org, if they are from a different index, we will falsely
     # classify them as conda packages.
@@ -116,7 +126,8 @@ def _list_conda_packages(manager: str) -> list[Program]:
 
 
 def _list_pixi_packages() -> list[Program]:
-    raw = _run_external_program_lister(["pixi", "list", "--json"], name="pixi")
+    pixi = require_program("pixi")
+    raw = _run_external_program_lister([pixi, "list", "--json"], name="pixi")
     return [
         Program(
             name=item["name"],
@@ -151,26 +162,85 @@ def _determine_env_package_manager(env_kind: EnvKind) -> _PackageManager:
     match env_kind:
         case EnvKind.VENV | EnvKind.SYSTEM:
             # Prefer uv over pip because it is faster
-            return _PackageManager.UV if _uv_is_available() else _PackageManager.PIP
+            return _PackageManager.UV if locate_uv() else _PackageManager.PIP
         case EnvKind.CONDA:
             # Prefer mamba over conda because it is faster
-            return (
-                _PackageManager.MAMBA
-                if _mamba_is_available()
-                else _PackageManager.CONDA
-            )
+            return _PackageManager.MAMBA if locate_mamba() else _PackageManager.CONDA
         case EnvKind.PIXI:
             return _PackageManager.PIXI
-
-
-def _uv_is_available() -> bool:
-    return shutil.which("uv") is not None
-
-
-def _mamba_is_available() -> bool:
-    return shutil.which("mamba") is not None
 
 
 # Duplicate of logging.get_logger to avoid importing from other modules
 def _get_logger() -> logging.Logger:
     return logging.getLogger("scicat-widget")
+
+
+def locate_uv() -> str | None:
+    """Find the path to the uv executable if it is available.
+
+    Returns
+    -------
+    :
+        - ``SCITACEAN_UV_EXECUTABLE`` if it is set
+        - A ``uv`` executable on ``PATH`` if it exists
+        - ``None`` otherwise.
+    """
+    return _locate_program("uv")
+
+
+def locate_mamba() -> str | None:
+    """Find the path to the mamba executable if it is available.
+
+    Returns
+    -------
+    :
+        - ``SCITACEAN_MAMBA_EXECUTABLE`` if it is set
+        - A ``mamba`` executable on ``PATH`` if it exists
+        - ``None`` otherwise.
+    """
+    return _locate_program("mamba")
+
+
+def locate_conda() -> str | None:
+    """Find the path to the conda executable if it is available.
+
+    Returns
+    -------
+    :
+        - ``SCITACEAN_CONDA_EXECUTABLE`` if it is set
+        - A ``conda`` executable on ``PATH`` if it exists
+        - ``None`` otherwise.
+    """
+    return _locate_program("conda")
+
+
+def locate_pixi() -> str | None:
+    """Find the path to the pixi executable if it is available.
+
+    Returns
+    -------
+    :
+        - ``SCITACEAN_PIXI_EXECUTABLE`` if it is set
+        - A ``pixi`` executable on ``PATH`` if it exists
+        - ``None`` otherwise.
+    """
+    return _locate_program("pixi")
+
+
+def _locate_program(name: str) -> str | None:
+    if override := os.environ.get(_program_env_var(name)):
+        return override
+    return shutil.which(name)
+
+
+def _program_env_var(name: str) -> str:
+    return f"SCITACEAN_{name.upper()}_EXECUTABLE"
+
+
+def require_program(name: str) -> str:
+    """Find a program and raise if it is unavailable."""
+    if exe := _locate_program(name):
+        return exe
+    raise RuntimeError(
+        f"Unable to find {name}. Consider setting {_program_env_var(name)}"
+    )
