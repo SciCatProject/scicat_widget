@@ -15,6 +15,7 @@ import sys
 from dataclasses import dataclass
 from enum import StrEnum
 from functools import lru_cache
+from typing import Any
 
 
 class ProgramKind(StrEnum):
@@ -104,7 +105,9 @@ def _list_pip_packages() -> list[Program]:
 
 def _list_uv_packages() -> list[Program]:
     uv = require_program("uv")
-    raw = _run_external_program_lister([uv, "pip", "list", "--format=json"], name="uv")
+    raw = _run_external_program_lister(
+        [uv, "pip", "list", "--format=json", "-p", sys.executable], name="uv"
+    )
     return [
         Program(name=item["name"], version=item["version"], kind=ProgramKind.PIP)
         for item in raw
@@ -114,6 +117,10 @@ def _list_uv_packages() -> list[Program]:
 def _list_conda_packages(manager: str) -> list[Program]:
     conda = require_program(manager)
     raw = _run_external_program_lister([conda, "list", "--json"], name=manager)
+
+    # The output can be a dict or a list depending on `manager`
+    packages: list[dict[str, str]] = raw["packages"] if isinstance(raw, dict) else raw
+
     # Conda lists channel="pypi" for pip packages. But probably only if they are from
     # pypi.org, if they are from a different index, we will falsely
     # classify them as conda packages.
@@ -125,7 +132,7 @@ def _list_conda_packages(manager: str) -> list[Program]:
             if item.get("channel", "") == "pypi"
             else ProgramKind.CONDA,
         )
-        for item in raw
+        for item in packages
     ]
 
 
@@ -142,7 +149,7 @@ def _list_pixi_packages() -> list[Program]:
     ]
 
 
-def _run_external_program_lister(command: list[str], name: str) -> list[dict[str, str]]:
+def _run_external_program_lister(command: list[str], name: str) -> Any:
     # uv installs packages into a standard venv
     try:
         result = subprocess.run(  # noqa: S603

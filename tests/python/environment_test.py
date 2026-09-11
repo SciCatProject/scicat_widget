@@ -17,6 +17,7 @@ import dataclasses
 import json
 import os
 import subprocess
+import uuid
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -34,12 +35,14 @@ def skip_unless_enabled(pytestconfig: pytest.Config) -> None:
         pytest.skip("Environment tests are not enabled")
 
 
-def _venv_runner(prefix: Path) -> list[str]:
+def _venv_python(prefix: Path) -> Path:
     if os.name == "nt":
-        python = prefix / "Scripts" / "python.exe"
-    else:
-        python = prefix / "bin" / "python"
-    return [os.fspath(python)]
+        return prefix / "Scripts" / "python.exe"
+    return prefix / "bin" / "python"
+
+
+def _venv_runner(prefix: Path) -> list[str]:
+    return [os.fspath(_venv_python(prefix))]
 
 
 def _uv_runner(prefix: Path) -> list[str]:
@@ -47,7 +50,7 @@ def _uv_runner(prefix: Path) -> list[str]:
         require_program("uv"),
         "run",
         "-p",
-        os.fspath(prefix.joinpath("bin", "python")),
+        os.fspath(_venv_python(prefix)),
         "python",
     ]
 
@@ -69,7 +72,7 @@ def _conda_runner(conda: str) -> Callable[[Path], list[str]]:
     return impl
 
 
-def _call_program(args: list[str | Path], cwd: Path | None = None):
+def _call_program(args: list[str | Path], cwd: Path | None = None) -> None:
     try:
         _ = subprocess.run(  # noqa: S603
             args, capture_output=True, check=True, text=True, cwd=cwd
@@ -83,7 +86,7 @@ def _pip_create_env(prefix: Path, programs: list[Program]) -> None:
     _call_program(["python", "-m", "venv", prefix])
     _call_program(
         [
-            prefix / "bin" / "python",
+            os.fspath(_venv_python(prefix)),
             "-m",
             "pip",
             "install",
@@ -190,8 +193,11 @@ class _EnvSpec:
             raise ValueError("Base path has not been set")
         return self.base_path / self.name
 
-    def make_command(self, args: list[str]) -> list[str]:
-        return [*self.python_runner(self.prefix), *args]
+    def run_script(self, source: str) -> list[str]:
+        assert self.base_path is not None
+        path = self.base_path.joinpath(f"script-{uuid.uuid4()}.py")
+        path.write_text(source)
+        return [*self.python_runner(self.prefix), os.fspath(path)]
 
     def create(self) -> None:
         self.creator(self.prefix, self.programs)
@@ -203,14 +209,7 @@ _ENV_SPECS = (
         kind=EnvKind.CONDA,
         creator=_conda_create_env("mamba"),
         python_runner=_conda_runner("mamba"),
-        programs=[Program(name="urllib3", version="2.7.0", kind=ProgramKind.CONDA)],
-    ),
-    _EnvSpec(
-        name="conda",
-        kind=EnvKind.CONDA,
-        creator=_conda_create_env("conda"),
-        python_runner=_conda_runner("conda"),
-        programs=[Program(name="urllib3", version="2.7.0", kind=ProgramKind.CONDA)],
+        programs=[Program(name="rich", version="15.0.0", kind=ProgramKind.CONDA)],
     ),
     _EnvSpec(
         name="mamba_pip",
@@ -218,7 +217,7 @@ _ENV_SPECS = (
         creator=_conda_create_env("mamba"),
         python_runner=_conda_runner("mamba"),
         programs=[
-            Program(name="urllib3", version="2.7.0", kind=ProgramKind.CONDA),
+            Program(name="rich", version="15.0.0", kind=ProgramKind.CONDA),
             Program(name="pydantic", version="2.13.4", kind=ProgramKind.PIP),
         ],
     ),
@@ -227,28 +226,28 @@ _ENV_SPECS = (
         kind=EnvKind.VENV,
         creator=_pip_create_env,
         python_runner=_venv_runner,
-        programs=[Program(name="urllib3", version="2.7.0", kind=ProgramKind.PIP)],
+        programs=[Program(name="rich", version="15.0.0", kind=ProgramKind.PIP)],
     ),
     _EnvSpec(
         name="uv",
         kind=EnvKind.VENV,
         creator=_uv_create_env,
         python_runner=_venv_runner,
-        programs=[Program(name="urllib3", version="2.7.0", kind=ProgramKind.PIP)],
+        programs=[Program(name="rich", version="15.0.0", kind=ProgramKind.PIP)],
     ),
     _EnvSpec(
         name="uv_run",
         kind=EnvKind.VENV,
         creator=_uv_create_env,
         python_runner=_uv_runner,
-        programs=[Program(name="urllib3", version="2.7.0", kind=ProgramKind.PIP)],
+        programs=[Program(name="rich", version="15.0.0", kind=ProgramKind.PIP)],
     ),
     _EnvSpec(
         name="pixi",
         kind=EnvKind.PIXI,
         creator=_pixi_create_env,
         python_runner=_pixi_runner,
-        programs=[Program(name="urllib3", version="2.7.0", kind=ProgramKind.CONDA)],
+        programs=[Program(name="rich", version="15.0.0", kind=ProgramKind.CONDA)],
     ),
     _EnvSpec(
         name="pixi_pip",
@@ -256,7 +255,7 @@ _ENV_SPECS = (
         creator=_pixi_create_env,
         python_runner=_pixi_runner,
         programs=[
-            Program(name="urllib3", version="2.7.0", kind=ProgramKind.CONDA),
+            Program(name="rich", version="15.0.0", kind=ProgramKind.CONDA),
             Program(name="pydantic", version="2.13.4", kind=ProgramKind.PIP),
         ],
     ),
@@ -286,17 +285,20 @@ def source_working_dir() -> str:
 
 
 def test_detect_environment_kind(env_spec: _EnvSpec) -> None:
-    py_script = """
+    py_script = f"""
+import sys
+sys.path.append({os.fspath(source_working_dir())!r})
+
 from _environment import detect_environment
 print(detect_environment())
 """
     try:
         result = subprocess.run(  # noqa: S603
-            env_spec.make_command(["-c", py_script]),
+            env_spec.run_script(py_script),
             check=True,
             text=True,
             capture_output=True,
-            cwd=source_working_dir(),
+            cwd=env_spec.prefix.parent,
         )
     except subprocess.CalledProcessError as error:
         _print_captured_output(error)
@@ -308,22 +310,25 @@ print(detect_environment())
 
 
 def test_list_programs(env_spec: _EnvSpec) -> None:
-    py_script = """
+    py_script = f"""
+import sys
+sys.path.append({os.fspath(source_working_dir())!r})
+
 import json
 from _environment import list_programs
 programs = list_programs()
 print(json.dumps([
-    {"name": program.name, "version": program.version, "kind": program.kind.value}
+    {{"name": program.name, "version": program.version, "kind": program.kind.value}}
     for program in programs
 ]))
 """
     try:
         result = subprocess.run(  # noqa: S603
-            env_spec.make_command(["-c", py_script]),
+            env_spec.run_script(py_script),
             check=True,
             text=True,
             capture_output=True,
-            cwd=source_working_dir(),
+            cwd=env_spec.prefix.parent,
         )
     except subprocess.CalledProcessError as error:
         _print_captured_output(error)
