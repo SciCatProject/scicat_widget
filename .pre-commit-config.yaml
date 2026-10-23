@@ -1,17 +1,18 @@
 repos:
   - repo: local
     hooks:
-      - id: uv-lock
+      - id: pixi-lock
         name: lock dependencies
-        entry: uv lock
+        entry: pixi lock
         language: system
-        files: ^(uv\.lock|pyproject\.toml|uv\.toml)$
+        files: ^(pixi\.lock|pyproject\.toml)$
         pass_filenames: false
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
       - id: check-added-large-files
+        args: ["--maxkb=800"]
       - id: check-case-conflict
       - id: check-illegal-windows-names
       - id: check-json
@@ -22,22 +23,25 @@ repos:
       - id: end-of-file-fixer
         exclude: '\.idea/'
       - id: trailing-whitespace
-        args: [ --markdown-linebreak-ext=md ]
+        args: [--markdown-linebreak-ext=md]
 
   - repo: https://github.com/kynan/nbstripout
     rev: 0.9.1
     hooks:
       - id: nbstripout
-        types: [ "jupyter" ]
-        args: [ "--drop-empty-cells",
-                "--extra-keys 'metadata.language_info.version cell.metadata.jp-MarkdownHeadingCollapsed cell.metadata.pycharm'" ]
+        types: ["jupyter"]
+        args:
+          [
+            "--drop-empty-cells",
+            "--extra-keys 'metadata.language_info.version cell.metadata.jp-MarkdownHeadingCollapsed cell.metadata.pycharm'",
+          ]
 
   - repo: local
     hooks:
       - id: app-prettier
         name: run prettier
         language: system
-        types_or: [ javascript, json, ts ]
+        types_or: [javascript, json, ts]
         entry: |
           bash -c 'npm run fix:prettier "${@}"' --
 
@@ -45,10 +49,10 @@ repos:
     rev: v0.16.3
     hooks:
       - id: ruff
-        args: [ --fix ]
-        types_or: [ python, pyi, jupyter ]
+        args: [--fix]
+        types_or: [python, pyi, jupyter]
       - id: ruff-format
-        types_or: [ python, pyi ]
+        types_or: [python, pyi]
 
   - repo: https://github.com/hukkin/mdformat
     rev: 1.0.0
