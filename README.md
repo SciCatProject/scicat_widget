@@ -18,7 +18,7 @@ We recommend using [uv](https://github.com/astral-sh/uv) for development.
 It will automatically manage virtual environments and dependencies for you.
 
 ```sh
-uv run jupyter lab example.ipynb
+pixi run jupyter lab example.ipynb
 ```
 
 Alternatively, create and manage your own virtual environment:
