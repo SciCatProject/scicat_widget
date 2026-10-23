@@ -5,7 +5,7 @@ on:
     inputs:
       python-version:
         type: string
-        description: 'Python interpreter version'
+        description: "Python interpreter version"
   workflow_call:
     inputs:
       python-version:
@@ -33,14 +33,18 @@ jobs:
       - name: Check Playwright Browsers
         # Prebaked in the image; this just verifies the matching binary is present:
         run: npx playwright install
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
+      - name: Compute pixi environment
+        id: pixi-env
+        shell: bash
+        # Turn, e.g., '3.14' into 'test-py314'
+        run: |
+          PYVER="${{ inputs.python-version }}"
+          echo "name=test-py${PYVER//./}" >> "$GITHUB_OUTPUT"
+      - name: Install pixi
+        uses: prefix-dev/setup-pixi@ad1da6449d9e506fd127fd67ab2d054a769f6a94 # 0.11.2
         with:
-          python-version: "${{ inputs.python-version }}"
-      - name: Pin Python version
-        run: uv python pin ${{ inputs.python-version }}
-      - name: Install Python packages
-        run: uv sync
+          pixi-version: "v0.82.1"
+          environments: ${{ steps.pixi-env.outputs.name }}
 
       - name: Run Playwright tests
         run: npx playwright test
