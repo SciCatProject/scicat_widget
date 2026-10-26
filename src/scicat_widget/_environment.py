@@ -83,12 +83,12 @@ def detect_environment() -> EnvKind:
 
 def _in_conda_env() -> bool:
     # Conda usually defines some env vars, but CONDA_PREFIX seems to be deprecated.
-    # To be more certain, also check for a `conda-meta` folder which is only
-    # present when Python was installed with conda.
+    # Previously, this also checked for a `conda-meta` folder which is only
+    # present when Python was installed with conda or pixi. But that falsely
+    # classified venvs created with pixi as conda environments.
     if "CONDA_DEFAULT_ENV" in os.environ or "CONDA_PREFIX" in os.environ:
         return True
-    conda_meta = os.path.join(sys.base_prefix, "conda-meta")
-    return os.path.isdir(conda_meta)
+    return False
 
 
 def _in_virtual_env() -> bool:

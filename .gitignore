@@ -28,6 +28,7 @@ __pycache__/
 Pipfile
 venv
 .venv
+.pixi
 
 # Ontologies
 *.jsonld

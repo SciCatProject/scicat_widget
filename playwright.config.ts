@@ -96,7 +96,7 @@ export default defineConfig({
             // JupyterLab for Galata
             command:
                 "npm run build && " +
-                "uv run jupyter lab --config ./tests/jupyter/jupyter_server_test_config.py " +
+                "pixi run _jupyter-test lab --config ./tests/jupyter/jupyter_server_test_config.py " +
                 `--port=${JUPYTER_PORT}`,
             url: `http://localhost:${JUPYTER_PORT}/lab`,
             timeout: 120_000,

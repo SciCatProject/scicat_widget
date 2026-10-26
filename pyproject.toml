@@ -25,25 +25,35 @@ requires-python = ">=3.11"
 dependencies = [
     "anywidget>=0.9.21",
     "ipykernel>=6.30.1",
+    "jupyterlab>=4.5.0",
     "jupyter-host-file-picker>=26.7.0",
     "pydantic>=2.12",
     "scitacean>=26.7.1",
 ]
 
 [dependency-groups]
+build = ["build >= 1.6.1"]
 dev = [
+    { include-group = "docs" },
     { include-group = "test" },
     "anywidget[dev]>=0.9.21",
-    "ipykernel>=6.30.1",
-    "jupyterlab>=4.5.0",
     "mypy>=1.17",
     "pip>=26.2.1",
     "ruff>=0.14",
-    "watchfiles>=1.1"
+    "watchfiles>=1.1",
 ]
-test = [
-    "pytest>=9",
+docs = [
+    "autodoc_pydantic >= 2.2",
+    "ipykernel >= 6.30",
+    "ipython >= 9.0",
+    "myst-parser >= 4.0",
+    "nbsphinx >= 0.9.7",
+    "pydata-sphinx-theme >= 0.16",
+    "sphinx >= 8.1, < 9.0.0",
+    "sphinx-autodoc-typehints >= 3.0",
+    "sphinx-copybutton >= 0.5.2",
 ]
+test = ["pytest>=9"]
 
 [project.urls]
 # "Documentation" = "https://scicatproject.github.io/scitacean"
@@ -76,20 +86,19 @@ addopts = """
 -ra
 -v
 """
-filterwarnings = [
-    "error",
-]
+filterwarnings = ["error"]
 
 [tool.mypy]
 plugins = "pydantic.mypy"
 mypy_path = "src"
-exclude = ["docs/conf.py", "tests/jupyter/jupyter_server_test_config.py", "venv", ".venv"]
-ignore_missing_imports = true
-enable_error_code = [
-    "ignore-without-code",
-    "redundant-expr",
-    "truthy-bool",
+exclude = [
+    "docs/conf.py",
+    "tests/jupyter/jupyter_server_test_config.py",
+    "venv",
+    ".venv",
 ]
+ignore_missing_imports = true
+enable_error_code = ["ignore-without-code", "redundant-expr", "truthy-bool"]
 strict = true
 show_error_codes = true
 warn_unreachable = true
@@ -105,13 +114,48 @@ extend-include = ["*.ipynb"]
 extend-exclude = [".*", "__pycache__", "build", "dist", "venv"]
 
 [tool.ruff.lint]
-select = ["B", "C4", "D", "DTZ", "E", "F", "G", "I", "FBT003", "FURB", "PERF", "PGH", "PT", "PYI", "RUF", "S", "T20", "UP", "W"]
+select = [
+    "B",
+    "C4",
+    "D",
+    "DTZ",
+    "E",
+    "F",
+    "G",
+    "I",
+    "FBT003",
+    "FURB",
+    "PERF",
+    "PGH",
+    "PT",
+    "PYI",
+    "RUF",
+    "S",
+    "T20",
+    "UP",
+    "W",
+]
 ignore = [
     "D105", # most magic methods don't need docstrings as their purpose is always the same
-    "E741", "E742", "E743", # do not use names ‘l’, ‘O’, or ‘I’; they are not a problem with a proper font
+    "E741",
+    "E742",
+    "E743", # do not use names ‘l’, ‘O’, or ‘I’; they are not a problem with a proper font
     # Conflict with ruff format, see
     # https://docs.astral.sh/ruff/formatter/#conflicting-lint-rules
-    "COM812", "COM819", "D206", "D300", "E111", "E114", "E117", "ISC001", "ISC002", "Q000", "Q001", "Q002", "Q003", "W191",
+    "COM812",
+    "COM819",
+    "D206",
+    "D300",
+    "E111",
+    "E114",
+    "E117",
+    "ISC001",
+    "ISC002",
+    "Q000",
+    "Q001",
+    "Q002",
+    "Q003",
+    "W191",
 ]
 fixable = ["B010", "I001", "PT001", "RUF022"]
 isort.known-first-party = ["scicat_widget"]
@@ -120,14 +164,133 @@ pydocstyle.convention = "numpy"
 [tool.ruff.lint.per-file-ignores]
 "ui-tests/*" = [
     "S101", # asserts are fine in tests
-    "D10", # no docstrings required in tests
+    "D10",  # no docstrings required in tests
 ]
 "tests/*" = [
     "S101", # asserts are fine in tests
-    "D10", # no docstrings required in tests
+    "D10",  # no docstrings required in tests
 ]
-"docs/*" = [
-    "D", "E402", "F811", "F841", "RUF015", "S101", "T201",
-]
+"docs/*" = ["D", "E402", "F811", "F841", "RUF015", "S101", "T201"]
 "*.ipynb" = ["I"]
 "docs/conf.py" = ["D10"]
+
+########
+# Pixi #
+########
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["linux-64", "linux-aarch64", "osx-64", "osx-arm64", "win-64"]
+
+[tool.pixi.pypi-dependencies]
+scicat_widget = { path = ".", editable = true }
+
+[tool.pixi.environments]
+default = { features = ["py311"], solve-group = "default" }
+dev = { features = ["dev", "py311"], solve-group = "default" }
+docs = { features = ["docs", "py311"], solve-group = "default" }
+test = { features = ["test", "py311"], solve-group = "default" }
+
+build = { features = ["build", "py311"], solve-group = "build" }
+
+test-py311 = { features = ["test", "py311"], solve-group = "py311" }
+test-py315 = { features = ["test", "py315"], solve-group = "py315" }
+
+# --- Python versions ---
+
+[tool.pixi.feature.py311.dependencies]
+python = "3.11.*"
+
+[tool.pixi.feature.py315.dependencies]
+python = "3.15.*"
+
+# -- Dev ---
+
+[tool.pixi.feature.dev.tasks.jupyter]
+cmd = "python -m jupyter"
+description = "Launch Jupyter with the given args"
+
+# --- Tests ---
+
+[tool.pixi.feature.test.tasks.test-py]
+cmd = "python -m pytest"
+default-environment = "test"
+description = "Run Python tests"
+
+[tool.pixi.feature.test.tasks.test-js]
+cmd = "npx playwright test"
+default-environment = "test"
+description = "Run JavaScript tests"
+
+[tool.pixi.feature.test.tasks._jupyter-test]
+# Separate jupyter task to launch a server for testing.
+# For development, `pixi run jupyter` selects the dev env.
+cmd = "python -m jupyter"
+description = "Launch Jupyter for testing"
+
+# --- Docs ---
+
+[tool.pixi.feature.docs.tasks.docs]
+cmd = "python -m sphinx -v -b html -d build/.doctrees docs html && touch html/.nojekyll && find html -type f -name '*.ipynb' -not -path 'html/_sources/*' -delete"
+description = "Build the documentation"
+
+[tool.pixi.feature.docs.tasks.docs-test]
+cmd = "python -m sphinx -v -b doctest -d build/.doctrees docs html"
+description = "Test the docs with doctest"
+
+[tool.pixi.feature.docs.tasks.docs-links]
+cmd = "python -m sphinx -v -b linkcheck -d build/.doctrees docs html"
+description = "Check links in the docs"
+
+[tool.pixi.feature.docs.tasks.docs-all]
+depends-on = ["docs", "docs-test", "docs-links"]
+description = "Build and test the docs"
+
+[tool.pixi.feature.docs.tasks.docs-clean]
+cmd = "rm -rf docs/generated build/.doctrees html"
+description = "Remove all docs output and intermediate files"
+
+# --- Linting ---
+
+[tool.pixi.feature.dev.tasks.lint]
+depends-on = ["lint-py", "spell"]
+description = "Run all fast linters; requires `prek`"
+
+[tool.pixi.feature.dev.tasks.lint-py]
+cmd = "prek run ruff -a"
+description = "Lint Python code; requires `prek`"
+
+[tool.pixi.feature.dev.tasks.mypy]
+cmd = "python -m mypy {{ path }}"
+args = [{ "arg" = "path", "default" = "." }]
+description = "Check types with mypy"
+
+[tool.pixi.feature.dev.tasks.typescript]
+cmd = "npm run typecheck"
+description = "Check types with TypeScript"
+
+[tool.pixi.feature.dev.tasks.spell]
+cmd = "prek run typos -a"
+description = "Check spelling; requires `prek`"
+
+# --- Formatting ---
+
+[tool.pixi.feature.dev.tasks.fmt-py]
+cmd = "prek run ruff-format -a"
+description = "Format Python code; requires `prek`"
+
+[tool.pixi.feature.dev.tasks.fmt-js]
+cmd = "prek run app-prettier -a"
+description = "Format JavaScript; requires `prek`"
+
+[tool.pixi.feature.dev.tasks.fmt-md]
+cmd = "prek run mdformat -a"
+description = "Format Markdown; requires `prek`"
+
+[tool.pixi.feature.dev.tasks.fmt]
+cmd = "prek run ruff-format app-prettier mdformat -a"
+description = "Run all formatters; requires `prek`"
+
+# --- Building ---
+[tool.pixi.feature.build.tasks.build]
+cmd = "python -m build"
