@@ -17,6 +17,7 @@ import dataclasses
 import json
 import os
 import subprocess
+import sys
 import uuid
 from collections.abc import Callable
 from pathlib import Path
@@ -33,6 +34,19 @@ _PYTHON_VERSION = "3.14"
 def skip_unless_enabled(pytestconfig: pytest.Config) -> None:
     if not pytestconfig.getoption("--env-tests"):
         pytest.skip("Environment tests are not enabled")
+
+
+def _clean_env() -> dict[str, Any]:
+    """Create an environment that does not pass along host conda and pixi variables.
+
+    Needed because the environment detection logic would use these to find
+    the host environment (pixi).
+    """
+    return {
+        key: value
+        for key, value in os.environ.items()
+        if not key.startswith("CONDA_") and not key.startswith("PIXI_")
+    }
 
 
 def _venv_python(prefix: Path) -> Path:
@@ -75,7 +89,7 @@ def _conda_runner(conda: str) -> Callable[[Path], list[str]]:
 def _call_program(args: list[str | Path], cwd: Path | None = None) -> None:
     try:
         _ = subprocess.run(  # noqa: S603
-            args, capture_output=True, check=True, text=True, cwd=cwd
+            args, capture_output=True, check=True, text=True, cwd=cwd, env=_clean_env()
         )
     except subprocess.CalledProcessError as error:
         _print_captured_output(error)
@@ -83,7 +97,7 @@ def _call_program(args: list[str | Path], cwd: Path | None = None) -> None:
 
 
 def _pip_create_env(prefix: Path, programs: list[Program]) -> None:
-    _call_program(["python", "-m", "venv", prefix])
+    _call_program([sys.executable, "-m", "venv", prefix])
     _call_program(
         [
             os.fspath(_venv_python(prefix)),
@@ -301,6 +315,7 @@ print(detect_environment())
             text=True,
             capture_output=True,
             cwd=env_spec.prefix.parent,
+            env=_clean_env(),
         )
     except subprocess.CalledProcessError as error:
         _print_captured_output(error)
@@ -337,6 +352,7 @@ print(json.dumps([
             text=True,
             capture_output=True,
             cwd=env_spec.prefix.parent,
+            env=_clean_env(),
         )
     except subprocess.CalledProcessError as error:
         _print_captured_output(error)
