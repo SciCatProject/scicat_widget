@@ -25,6 +25,7 @@ requires-python = ">=3.11"
 dependencies = [
     "anywidget>=0.9.21",
     "ipykernel>=6.30.1",
+    "jupyterlab>=4.5.0",
     "jupyter-host-file-picker>=26.7.0",
     "pydantic>=2.12",
     "scitacean>=26.7.1",
@@ -36,8 +37,6 @@ dev = [
     { include-group = "docs" },
     { include-group = "test" },
     "anywidget[dev]>=0.9.21",
-    "ipykernel>=6.30.1",
-    "jupyterlab>=4.5.0",
     "mypy>=1.17",
     "pip>=26.2.1",
     "ruff>=0.14",
@@ -222,6 +221,12 @@ description = "Run Python tests"
 cmd = "npx playwright test"
 default-environment = "test"
 description = "Run JavaScript tests"
+
+[tool.pixi.feature.test.tasks._jupyter-test]
+# Separate jupyter task to launch a server for testing.
+# For development, `pixi run jupyter` selects the dev env.
+cmd = "python -m jupyter"
+description = "Launch Jupyter for testing"
 
 # --- Docs ---
 

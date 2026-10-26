@@ -47,7 +47,7 @@ jobs:
           environments: ${{ steps.pixi-env.outputs.name }}
 
       - name: Run Playwright tests
-        run: npx playwright test
+        run: pixi run test-js
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
