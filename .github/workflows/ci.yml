@@ -15,7 +15,7 @@ jobs:
         uses: actions/setup-node@v6
       - name: Install Javascript dependencies
         run: npm install
-      - uses: prefix-dev/setup-pixi@v0.11.2
+      - uses: prefix-dev/setup-pixi@v0.11.3
         with:
           pixi-version: v0.82.1
           environments: dev
@@ -35,7 +35,7 @@ jobs:
       - name: Typecheck TypeScript
         run: npm run typecheck
 
-      - uses: prefix-dev/setup-pixi@v0.11.2
+      - uses: prefix-dev/setup-pixi@v0.11.3
         with:
           pixi-version: v0.82.1
           environments: dev
@@ -80,7 +80,7 @@ jobs:
         uses: actions/setup-node@v6
       - name: Install Javascript dependencies
         run: npm install
-      - uses: prefix-dev/setup-pixi@v0.11.2
+      - uses: prefix-dev/setup-pixi@v0.11.3
         with:
           pixi-version: v0.82.1
           environments: build
