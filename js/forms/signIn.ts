@@ -232,6 +232,7 @@ function createTokenEntryElements(
 
     const input = new TextInput("token", {
         type: "password",
+        disablePasswordManager: true,
         validator: (token) => tokenAnalysis.get(token).error,
     });
     const label = createLabelFor(
