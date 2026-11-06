@@ -3,6 +3,7 @@ import { Instance } from "../models.ts";
 import scicatLogo from "../assets/img/SciCat_logo_icon.svg";
 import { createLabelFor } from "./util.ts";
 import { iconTextButton, simpleLink } from "../components";
+import { createTokenAnalysisCache } from "../validation.ts";
 
 export class SignIn {
     readonly element: HTMLDivElement;
@@ -34,7 +35,8 @@ export class SignIn {
         this.element = document.createElement("div");
         this.instances = instances;
         this.instanceSelection = this.createInstanceSelection();
-        this.state = this.instanceSelection;
+        // this.state = this.instanceSelection;
+        this.state = this.createTokenEntry(instances[0]); // TODO remove
         this.element.replaceChildren(this.state.element);
     }
 
@@ -198,7 +200,12 @@ function createTokenEntryElements(
     onCancel: () => void,
 ): HTMLDivElement {
     const heading = document.createElement("h3");
-    heading.textContent = `Sign in to ${instance.name} with a token`;
+    const headingA = document.createTextNode('Sign in to "');
+    const instanceNameEl = document.createElement("b");
+    instanceNameEl.textContent = instance.name;
+    const headingB = document.createTextNode('" with a token');
+    // heading.textContent = `Sign in to ${instance.name} with a token`;
+    heading.append(headingA, instanceNameEl, headingB);
 
     const explanation = document.createElement("div");
     explanation.innerHTML = `Paste your SciCat token from
@@ -226,11 +233,13 @@ function createTokenEntryElements(
     );
 
     const buttonWrap = document.createElement("div");
+    buttonWrap.className = "cean-token-entry-buttons";
     buttonWrap.append(backButton, submitButton);
 
     const tokenAnalysis = createTokenAnalysisCache();
 
     const input = new TextInput("token", {
+        placeholder: "Token ...",
         type: "password",
         disablePasswordManager: true,
         validator: (token) => tokenAnalysis.get(token).error,
@@ -244,10 +253,15 @@ function createTokenEntryElements(
     tokenWarning.className = "cean-warning";
     input.container.append(tokenWarning); // append to input to get consistent height
 
-    input.container.addEventListener("input", () => {
+    const checkToken = () => {
         tokenWarning.textContent = tokenAnalysis.get(input.value).warning ?? "";
         submitButton.disabled = !input.value || !input.isValid();
-    });
+    };
+    // "input" fires while typing, "input-updated" when the value is set
+    // programmatically, e.g., by the clear button.
+    input.container.addEventListener("input", checkToken);
+    input.container.addEventListener("input-updated", checkToken);
+
     input.container.addEventListener("keydown", (e: KeyboardEvent) => {
         if (e.code === "Enter" || e.code === "NumpadEnter") {
             submitButton.click();
@@ -261,78 +275,4 @@ function createTokenEntryElements(
     container.className = "cean-token-entry";
     container.append(heading, explanation, fieldset);
     return container;
-}
-
-interface TokenAnalysis {
-    error: string | null;
-    warning: string | null;
-}
-
-function createTokenAnalysisCache(): { get: (token: string | null) => TokenAnalysis } {
-    let previousToken: string | null | undefined = undefined;
-    let previousAnalysis: TokenAnalysis = { error: null, warning: null };
-
-    return {
-        get(token: string | null): TokenAnalysis {
-            if (token === previousToken) {
-                return previousAnalysis;
-            }
-
-            previousToken = token;
-            previousAnalysis = analyzeToken(token);
-            return previousAnalysis;
-        },
-    };
-}
-
-function analyzeToken(token: string | null): TokenAnalysis {
-    if (token === null) {
-        return { error: null, warning: null };
-    }
-    const parsed = tryParseJWT(token);
-    if (typeof parsed === "string") {
-        return { error: parsed, warning: null };
-    }
-
-    const expiresIn = jwtExpiration(parsed).getTime() - new Date().getTime();
-    if (expiresIn <= 0) {
-        return {
-            error: "The token has expired. Please generate a new token.",
-            warning: null,
-        };
-    } else if (expiresIn < 5 * 60 * 1000) {
-        return {
-            error: null,
-            warning: "Warning: the token expires in less than 5 minutes.",
-        };
-    }
-    return { error: null, warning: null };
-}
-
-function tryParseJWT(token: string): Record<string, any> | string {
-    try {
-        return parseJwt(token);
-    } catch (error) {
-        return "Malformed token. Please enter a correct token.";
-    }
-}
-
-function parseJwt(token: string): Record<string, any> {
-    const base64Url = token.split(".")[1];
-    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-    const jsonPayload = decodeURIComponent(
-        window
-            .atob(base64)
-            .split("")
-            .map((c) => {
-                return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
-            })
-            .join(""),
-    );
-    return JSON.parse(jsonPayload);
-}
-
-function jwtExpiration(token: Record<string, any>): Date {
-    const timestamp = token.exp as number;
-    return new Date(timestamp * 1000);
 }
