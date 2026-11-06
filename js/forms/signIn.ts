@@ -103,29 +103,30 @@ function createInstanceSelection(
     onSelectSSO: (instance: Instance) => void,
     onSelectToken: (instance: Instance) => void,
 ): HTMLDivElement {
-    const searchBar = new TextInput("instanceSearch", { placeholder: "Search..." });
+    const searchBar = new TextInput("instanceSearch", { placeholder: "Filter ..." });
+    searchBar.container.classList.add("cean-signin-filter");
 
-    const buttonList = document.createElement("div");
-    buttonList.className = "cean-signin-buttons";
+    const instanceList = document.createElement("div");
+    instanceList.className = "cean-signin-instances";
     for (const instance of instances) {
-        buttonList.append(createInstanceItem(instance, onSelectSSO, onSelectToken));
+        instanceList.append(createInstanceItem(instance, onSelectSSO, onSelectToken));
     }
 
-    searchBar.container.addEventListener("input", () => {
+    const applyFilter = () => {
         const filter = (searchBar.value ?? "").toLowerCase().trim();
-        buttonList.querySelectorAll(".cean-signin-instance").forEach((element) => {
+        instanceList.querySelectorAll(".cean-signin-instance").forEach((element) => {
             const el = element as HTMLElement;
-            if (instanceMatches(el, filter)) {
-                el.style.display = "grid";
-            } else {
-                el.style.display = "none";
-            }
+            el.style.display = instanceMatches(el, filter) ? "" : "none";
         });
-    });
+    };
+    // "input" fires while typing, "input-updated" when the value is set
+    // programmatically, e.g., by the clear button.
+    searchBar.container.addEventListener("input", applyFilter);
+    searchBar.container.addEventListener("input-updated", applyFilter);
 
     const panel = document.createElement("div");
     panel.className = "cean-signin-panel";
-    panel.append(searchBar.container, buttonList);
+    panel.append(searchBar.container, instanceList);
     return panel;
 }
 
@@ -134,58 +135,52 @@ function createInstanceItem(
     onSelectSSO: (instance: Instance) => void,
     onSelectToken: (instance: Instance) => void,
 ): HTMLDivElement {
-    const shortUrl = instance.url.replace(/^https?:\/\//, "");
-
-    const logoContainer = document.createElement("span");
-    logoContainer.className = "cean-signin-logo-container";
+    const logoContainer = document.createElement("div");
+    logoContainer.className = "cean-signin-logo";
+    // Show the generic SciCat logo until the instance logo has loaded.
+    // If it fails to load, the generic logo stays.
+    logoContainer.innerHTML = scicatLogo;
     const img = document.createElement("img");
-    img.src = `${instance.url}/assets/images/site-header-logo.png`;
     img.alt = "";
-    img.onerror = () => {
-        img.onerror = null; // Prevent infinite loop if the fallback also fails
-        logoContainer.innerHTML = scicatLogo;
-    };
-    logoContainer.append(img);
+    img.title = instance.name;
+    img.addEventListener("load", () => logoContainer.replaceChildren(img), {
+        once: true,
+    });
+    img.src = `${instance.url}/assets/images/site-header-logo.png`;
 
-    const bigLabel = document.createElement("label");
-    bigLabel.textContent = shortUrl;
+    const nameElement = document.createElement("div");
+    nameElement.className = "cean-signin-instance-name";
+    nameElement.textContent = instance.name;
 
-    const bigButton = document.createElement("button");
-    bigButton.classList.add("cean-button", "cean-signin-big-button");
-    bigButton.append(logoContainer, bigLabel);
+    const urlElement = document.createElement("div");
+    urlElement.className = "cean-signin-instance-url";
+    urlElement.innerHTML = simpleLink(instance.url);
 
-    const signInLabel = document.createElement("label");
-    signInLabel.textContent = "Sign in";
+    const textContainer = document.createElement("div");
+    textContainer.className = "cean-signin-instance-text";
+    textContainer.append(nameElement, urlElement);
+
     const signInButton = document.createElement("button");
     signInButton.className = "cean-button";
+    signInButton.textContent = "Sign In";
     signInButton.addEventListener("click", () => onSelectSSO(instance));
-    signInButton.append(signInLabel);
 
-    const manualLabel = document.createElement("label");
-    manualLabel.textContent = "Manual";
-    const manualButton = document.createElement("button");
-    manualButton.className = "cean-button";
-    manualButton.addEventListener("click", () => onSelectToken(instance));
-    manualButton.append(manualLabel);
+    const tokenButton = document.createElement("button");
+    tokenButton.className = "cean-button";
+    tokenButton.textContent = "Token";
+    tokenButton.title = "Sign in with a SciCat token";
+    tokenButton.addEventListener("click", () => onSelectToken(instance));
 
-    if (instance.supportsSSO) {
-        bigButton.addEventListener("click", () => onSelectSSO(instance));
-        signInButton.classList.add("cean-primary-choice");
-    } else {
-        bigButton.addEventListener("click", () => onSelectToken(instance));
+    if (!instance.supportsSSO) {
         signInButton.disabled = true;
         signInButton.title = "Sign in not available for this SciCat instance.";
-        manualButton.classList.add("cean-primary-choice");
     }
-
-    const smallButtons = document.createElement("div");
-    smallButtons.append(signInButton, manualButton);
 
     const instanceItem = document.createElement("div");
     instanceItem.className = "cean-signin-instance";
     instanceItem.dataset.name = instance.name.toLowerCase();
     instanceItem.dataset.url = instance.url.toLowerCase();
-    instanceItem.append(bigButton, smallButtons);
+    instanceItem.append(logoContainer, textContainer, signInButton, tokenButton);
 
     return instanceItem;
 }

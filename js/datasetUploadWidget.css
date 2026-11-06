@@ -823,106 +823,108 @@ input.cean-input, select.cean-input, textarea.cean-input {
 }
 
 .cean-signin-panel {
-    padding: 2em;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5em;
+    box-sizing: border-box;
+    height: 35em;
+    flex-shrink: 0;
     max-width: 60em;
     margin: auto;
+    padding: 1em;
+    overflow: hidden;
 
-    input {
-        padding: 0.5em;
-        margin-bottom: 1em;
+    .cean-signin-filter {
+        flex-shrink: 0;
+
+        input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 0.5em;
+            /* Keep text from running under the clear button */
+            padding-right: 2.5em;
+        }
+
+        .cean-input-insert {
+            /* Match the input's padding */
+            right: 0.5em;
+        }
     }
 }
 
-.cean-signin-buttons {
+.cean-signin-instances {
+    flex: 1 1 auto;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     gap: 1em;
-
-    max-height: 50em;
-    overflow-y: auto;
+    overflow: auto;
+    scrollbar-gutter: stable;
+    /* Space between the cards and the scroll bar */
+    padding-right: 1.5em;
 }
 
 .cean-signin-instance {
     display: grid;
-    grid-template-columns: 1fr max-content;
+    grid-template-columns: max-content minmax(10em, 1fr) max-content max-content;
+    align-items: center;
+    column-gap: 2em;
+    flex-shrink: 0;
+    padding: 1em 2em;
     border: 1px solid var(--jp-border-color0);
-    border-radius: var(--jp-border-radius);;
-
-    > div:last-child {
-        display: flex;
-        flex-direction: column;
-        min-width: 10em;
-        border-left: 1px solid var(--jp-border-color1);
-
-        button {
-            min-height: 50%;
-        }
-
-        button:last-child {
-            border-top: 1px solid var(--jp-border-color1);
-        }
-    }
+    border-radius: var(--jp-border-radius);
 
     button {
-        cursor: pointer;
-        border: none;
-        border-radius: 0;
-
-        &:not(:disabled) label {
-            cursor: pointer;
-        }
-
-        &:hover:not(:disabled) {
-            background: var(--jp-layout-color3);
-        }
+        padding: 0.5em 1.2em;
+        font-size: var(--jp-ui-font-size2);
+        border: 1px solid var(--jp-border-color1);
 
         &:disabled {
-            background: var(--jp-layout-color1);
+            cursor: not-allowed;
+            color: var(--jp-ui-font-color3);
+            background: var(--jp-input-active-background);
         }
-
-        &.cean-primary-choice {
-            /* SciCat brand color */
-            background: #27aae1;
-            color: var(--jp-ui-inverse-font-color1);
-
-            &:hover {
-                background: #3ec2fa;
-            }
-        }
-    }
-
-    &:has(.cean-signin-big-button:hover) button.cean-primary-choice {
-        background: #3ec2fa;
-        color: var(--jp-ui-font-color0);
     }
 }
 
-.cean-signin-big-button {
+.cean-signin-logo {
+    box-sizing: border-box;
+    width: 10em; /* fixed width so that instance names align */
+    height: 5em;
+    padding: 0.5em;
+    border-radius: var(--jp-border-radius);
     display: flex;
     align-items: center;
-    height: 5rem;
+    justify-content: center;
 
-    .cean-signin-logo-container {
-        width: 8em;
-        height: 70%;
-        flex-shrink: 0;
-        margin-right: 1em;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+    img,
+    svg {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
+}
+
+.cean-signin-instance-text {
+    min-width: 0;
+
+    .cean-signin-instance-name {
+        font-size: var(--jp-ui-font-size3);
+        color: var(--jp-ui-font-color0);
+        margin-bottom: 0.3em;
     }
 
-    img, svg {
-        max-width: 100%;
-        max-height: 100%;
-        width: auto;
-        height: auto;
-    }
+    .cean-signin-instance-url {
+        font-size: var(--jp-ui-font-size1);
+        color: var(--jp-ui-font-color2);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
 
-    label {
-        margin-left: 2em;
-        font-size: 1.2em;
-        cursor: inherit;
+        &:hover {
+            color: var(--jp-content-link-color);
+            text-decoration: underline;
+        }
     }
 }
 
