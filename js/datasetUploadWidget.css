@@ -833,22 +833,23 @@ input.cean-input, select.cean-input, textarea.cean-input {
     margin: auto;
     padding: 1em;
     overflow: hidden;
+}
 
-    .cean-signin-filter {
-        flex-shrink: 0;
+.cean-signin-filter, .cean-token-entry .cean-input-container {
+    flex-shrink: 0;
 
-        input {
-            width: 100%;
-            box-sizing: border-box;
-            padding: 0.5em;
-            /* Keep text from running under the clear button */
-            padding-right: 2.5em;
-        }
+    input {
+        font-size: var(--jp-ui-font-size2);
+        width: 100%;
+        box-sizing: border-box;
+        padding: 0.5em;
+        /* Keep text from running under the clear button */
+        padding-right: 2.5em;
+    }
 
-        .cean-input-insert {
-            /* Match the input's padding */
-            right: 0.5em;
-        }
+    .cean-input-insert {
+        /* Match the input's padding */
+        right: 0.5em;
     }
 }
 
@@ -934,9 +935,17 @@ input.cean-input, select.cean-input, textarea.cean-input {
         grid-template-rows: auto 1.5em;
     }
 
-    .cean-input-container {
-        grid-column: 1;
-        grid-row: 1;
+    fieldset {
+        margin: 1.5em 0;
+        padding: 1.5em 1em;
+
+        label {
+            font-size: var(--jp-ui-font-size2);
+        }
+
+        .cean-input-container {
+            margin-top: 1em;
+        }
     }
 
     .cean-status,
@@ -953,6 +962,23 @@ input.cean-input, select.cean-input, textarea.cean-input {
         color: var(--jp-error-color2);
     }
 
+    .cean-token-entry-buttons {
+        display: flex;
+        justify-content: flex-end;
+        gap: 1em;
+    }
+
+    button:not(.cean-clear-button) {
+        padding: 0.5em 1.2em;
+        font-size: var(--jp-ui-font-size1);
+        border: 1px solid var(--jp-border-color1);
+
+        &:disabled {
+            cursor: not-allowed;
+            color: var(--jp-ui-font-color3);
+            background: var(--jp-input-active-background);
+        }
+    }
 
     a {
         color: var(--jp-content-link-color);

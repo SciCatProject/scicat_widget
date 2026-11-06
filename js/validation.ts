@@ -73,3 +73,79 @@ function checkOrcidIdChecksum(orcid: string): string | null {
     }
     return null;
 }
+
+export interface TokenAnalysis {
+    error: string | null;
+    warning: string | null;
+}
+
+export function createTokenAnalysisCache(): {
+    get: (token: string | null) => TokenAnalysis;
+} {
+    let previousToken: string | null | undefined = undefined;
+    let previousAnalysis: TokenAnalysis = { error: null, warning: null };
+
+    return {
+        get(token: string | null): TokenAnalysis {
+            if (token === previousToken) {
+                return previousAnalysis;
+            }
+
+            previousToken = token;
+            previousAnalysis = analyzeToken(token);
+            return previousAnalysis;
+        },
+    };
+}
+
+function analyzeToken(token: string | null): TokenAnalysis {
+    if (token === null) {
+        return { error: null, warning: null };
+    }
+    const parsed = tryParseJWT(token);
+    if (typeof parsed === "string") {
+        return { error: parsed, warning: null };
+    }
+
+    const expiresIn = jwtExpiration(parsed).getTime() - new Date().getTime();
+    if (expiresIn <= 0) {
+        return {
+            error: "The token has expired. Please generate a new token.",
+            warning: null,
+        };
+    } else if (expiresIn < 5 * 60 * 1000) {
+        return {
+            error: null,
+            warning: "Warning: the token expires in less than 5 minutes.",
+        };
+    }
+    return { error: null, warning: null };
+}
+
+function tryParseJWT(token: string): Record<string, any> | string {
+    try {
+        return parseJwt(token);
+    } catch (error) {
+        return "Malformed token. Please enter a correct token.";
+    }
+}
+
+function parseJwt(token: string): Record<string, any> {
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+        window
+            .atob(base64)
+            .split("")
+            .map((c) => {
+                return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
+            })
+            .join(""),
+    );
+    return JSON.parse(jsonPayload);
+}
+
+function jwtExpiration(token: Record<string, any>): Date {
+    const timestamp = token.exp as number;
+    return new Date(timestamp * 1000);
+}
