@@ -2,12 +2,12 @@
 # Copyright (c) 2026 SciCat Project (https://github.com/SciCatProject/scitacean)
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from typing import Any
 from uuid import uuid4
 
 import traitlets
-from scitacean import Client, Profile
+from scitacean import Client, Profile, builtin_profile_factories
 
 from ._base_widget import BaseWidget
 from ._js import js_and_css
@@ -18,11 +18,11 @@ class LoginWidget(BaseWidget):
 
     instances = traitlets.List().tag(sync=True)
 
-    def __init__(self, profiles: Iterable[Profile]) -> None:
-        profile_dict = {uuid4().hex: profile for profile in profiles}
+    def __init__(self, profiles: Iterable[Profile] | None = None) -> None:
+        profile_dict = _load_profiles(profiles)
 
         event_handlers = {
-            "req:login": self._on_login,
+            "req:login": self._handle_on_login,
         }
         super().__init__(
             event_handlers=event_handlers, instances=_serialize_profiles(profile_dict)
@@ -30,13 +30,22 @@ class LoginWidget(BaseWidget):
 
         self._profiles = profile_dict
         self._client: Client | None = None
+        self._login_callbacks: list[Callable[[Client], None]] = []
 
-    def _on_login(self, key: str, payload: dict[str, Any]) -> None:
+    def on_login(self, callback: Callable[[Client], None]) -> None:
+        """Register a function to call with the client after a successful login."""
+        self._login_callbacks.append(callback)
+
+    def _handle_on_login(self, key: str, payload: dict[str, Any]) -> None:
         if instance_key := payload.get("instance_key"):
             result = self._sso_login(instance_key)
         else:
             result = self._token_login(payload["apiUrl"], payload["token"])
         self.send({"type": "res:login", "key": key, "payload": result})
+
+        if result["success"] and self._client is not None:
+            for callback in self._login_callbacks:
+                callback(self._client)
 
     def _sso_login(self, instance_key: str) -> dict[str, str | bool]:
         try:
@@ -95,3 +104,12 @@ def _profile_name(profile: Profile) -> str:
 class _NullClosing:
     def close(self) -> None:
         pass
+
+
+def _load_profiles(profiles: Iterable[Profile] | None = None) -> dict[str, Profile]:
+    p = (
+        (f() for f in builtin_profile_factories().values())
+        if profiles is None
+        else profiles
+    )
+    return {uuid4().hex: profile for profile in p}
