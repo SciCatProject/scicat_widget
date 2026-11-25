@@ -168,7 +168,7 @@ function renderKnownProposalItem(
     instruments: Instrument[],
 ): HTMLElement {
     const keySpan = document.createElement("span");
-    keySpan.className = "cean-item-key";
+    keySpan.className = "cean-item-primary cean-item-key";
     keySpan.textContent = proposal.id;
 
     const textSpan = document.createElement("span");
@@ -268,16 +268,28 @@ function makeInstrumentInput(
 
 function renderKnownInstrumentItem(instrument: Instrument): HTMLElement {
     const nameSpan = document.createElement("span");
-    nameSpan.className = "cean-item-text";
+    nameSpan.className = "cean-item-primary";
     nameSpan.textContent = instrument.name;
 
     const uniqueNameSpan = document.createElement("span");
     uniqueNameSpan.className = "cean-item-key";
-    uniqueNameSpan.textContent = instrument.uniqueName;
+    uniqueNameSpan.textContent = `(${instrument.uniqueName})`;
+
+    const mainRow = document.createElement("div");
+    mainRow.className = "cean-item-row";
+    mainRow.append(nameSpan, uniqueNameSpan);
+
+    const idSpan = document.createElement("span");
+    idSpan.className = "cean-item-key";
+    idSpan.textContent = instrument.id;
+
+    const detailsRow = document.createElement("div");
+    detailsRow.className = "cean-item-row cean-item-detail-row";
+    detailsRow.append(idSpan);
 
     const wrap = document.createElement("div");
-    wrap.className = "cean-instrument cean-item-row";
-    wrap.append(nameSpan, uniqueNameSpan);
+    wrap.className = "cean-instrument";
+    wrap.append(mainRow, detailsRow);
     return wrap;
 }
 

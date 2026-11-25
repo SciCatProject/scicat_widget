@@ -16,7 +16,7 @@ export class ComboboxManualInput extends InputComponent<string> {
     private readonly id_ = crypto.randomUUID();
 
     constructor(key: string, choices: Choice[], options: Options) {
-        const comboboxInput = new ComboboxInput(`${key}-combobox}`, choices, options);
+        const comboboxInput = new ComboboxInput(`${key}-combobox`, choices, options);
         const textInput = new TextInput(`${key}-text`, {});
         const manualButton = toggleButton(
             "pen",
