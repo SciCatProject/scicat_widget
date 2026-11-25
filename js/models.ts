@@ -20,6 +20,14 @@ export type File = {
     remotePath?: string;
 };
 
+export type Instance = {
+    key: string; // Unique key for backend communication
+    name: string; // Human-readable name
+    apiUrl: string;
+    frontendUrl: string;
+    supportsSSO: boolean;
+};
+
 export type Instrument = {
     id: string;
     name: string;

@@ -550,7 +550,7 @@ input.cean-input, select.cean-input, textarea.cean-input {
 
     &:not(:has(:disabled), :disabled) {
         &:hover {
-            background: var(--jp-input-hover-background);
+            background: var(--jp-layout-color3);
             color: var(--jp-ui-font-color0);
         }
 
@@ -820,4 +820,191 @@ input.cean-input, select.cean-input, textarea.cean-input {
     padding: 0.3em 0;
     font-variant: all-small-caps;
     font-size: var(--jp-ui-font-size2);
+}
+
+.cean-signin-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5em;
+    box-sizing: border-box;
+    height: 35em;
+    flex-shrink: 0;
+    max-width: 60em;
+    margin: auto;
+    padding: 1em;
+    overflow: hidden;
+}
+
+.cean-signin-filter, .cean-token-entry .cean-input-container {
+    flex-shrink: 0;
+
+    input {
+        font-size: var(--jp-ui-font-size2);
+        width: 100%;
+        box-sizing: border-box;
+        padding: 0.5em;
+        /* Keep text from running under the clear button */
+        padding-right: 2.5em;
+    }
+
+    .cean-input-insert {
+        /* Match the input's padding */
+        right: 0.5em;
+    }
+}
+
+.cean-signin-instances {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1em;
+    overflow: auto;
+    scrollbar-gutter: stable;
+    /* Space between the cards and the scroll bar */
+    padding-right: 1.5em;
+}
+
+.cean-signin-instance {
+    display: grid;
+    grid-template-columns: max-content minmax(10em, 1fr) max-content max-content;
+    align-items: center;
+    column-gap: 2em;
+    flex-shrink: 0;
+    padding: 1em 2em;
+    border: 1px solid var(--jp-border-color0);
+    border-radius: var(--jp-border-radius);
+
+    button {
+        padding: 0.5em 1.2em;
+        font-size: var(--jp-ui-font-size2);
+        border: 1px solid var(--jp-border-color1);
+
+        &:disabled {
+            cursor: not-allowed;
+            color: var(--jp-ui-font-color3);
+            background: var(--jp-input-active-background);
+        }
+    }
+}
+
+.cean-signin-logo {
+    box-sizing: border-box;
+    width: 10em; /* fixed width so that instance names align */
+    height: 5em;
+    padding: 0.5em;
+    border-radius: var(--jp-border-radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    img,
+    svg {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
+}
+
+.cean-signin-instance-text {
+    min-width: 0;
+
+    .cean-signin-instance-name {
+        font-size: var(--jp-ui-font-size3);
+        color: var(--jp-ui-font-color0);
+        margin-bottom: 0.3em;
+    }
+
+    .cean-signin-instance-url {
+        font-size: var(--jp-ui-font-size1);
+        color: var(--jp-ui-font-color2);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+
+        &:hover {
+            color: var(--jp-content-link-color);
+            text-decoration: underline;
+        }
+    }
+}
+
+.cean-token-entry {
+    .cean-input-wrap {
+        display: grid;
+        grid-template-rows: auto 1.5em;
+    }
+
+    fieldset {
+        margin: 1.5em 0;
+        padding: 1.5em 1em;
+
+        label {
+            font-size: var(--jp-ui-font-size2);
+        }
+
+        .cean-input-container {
+            margin-top: 1em;
+        }
+    }
+
+    .cean-status,
+    .cean-warning {
+        grid-column: 1;
+        grid-row: 2;
+        display: block;
+        min-height: 1.5em;
+        justify-self: start;
+        text-align: left;
+    }
+
+    .cean-status {
+        color: var(--jp-error-color2);
+    }
+
+    .cean-token-entry-buttons {
+        display: flex;
+        justify-content: flex-end;
+        gap: 1em;
+    }
+
+    button:not(.cean-clear-button) {
+        padding: 0.5em 1.2em;
+        font-size: var(--jp-ui-font-size1);
+        border: 1px solid var(--jp-border-color1);
+
+        &:disabled {
+            cursor: not-allowed;
+            color: var(--jp-ui-font-color3);
+            background: var(--jp-input-active-background);
+        }
+    }
+
+    a {
+        color: var(--jp-content-link-color);
+
+        &:hover {
+            color: var(--jp-content-link-color);
+            text-decoration: underline;
+        }
+    }
+}
+
+.cean-login-result {
+    margin: 1.5em 0;
+    padding: 1.5em 1em;
+    display: flex;
+    flex-direction: column;
+    gap: 1em;
+
+    button {
+        align-self: flex-end;
+        padding: 0.5em 1.2em;
+        font-size: var(--jp-ui-font-size1);
+        border: 1px solid var(--jp-border-color1);
+    }
+}
+
+.cean-output-anchor {
+    display: none;
 }

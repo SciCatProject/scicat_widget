@@ -2,8 +2,9 @@ import { InputComponent, InputOptions } from "./inputComponent.ts";
 
 export interface Options extends InputOptions<string> {
     multiline?: boolean;
-    type?: "text" | "email";
+    type?: "text" | "email" | "password";
     placeholder?: string;
+    disablePasswordManager?: boolean;
 }
 
 /**
@@ -104,6 +105,21 @@ function makeInputElement(options: Options): HTMLInputElement | HTMLTextAreaElem
             }
         });
         inputElement.type = options.type ?? "text";
+        if (options.disablePasswordManager) {
+            disablePasswordManager(inputElement);
+        }
         return inputElement;
     }
+}
+
+/**
+ * Turn off password managers in this input field.
+ * See https://stackoverflow.com/a/51272839
+ */
+function disablePasswordManager(input: HTMLInputElement) {
+    input.autocomplete = "new-password";
+    input.setAttribute("data-1p-ignore", "");
+    input.setAttribute("data-bwignore", "true");
+    input.setAttribute("data-lpignore", "true");
+    input.setAttribute("data-protonpass-ignore", "true");
 }

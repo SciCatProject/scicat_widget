@@ -21,20 +21,6 @@ export type ResBrowseFiles = {
     selected: string;
 };
 
-export type ReqBuildField = {
-    name: string;
-    values: Record<string, any>;
-    existingValue: any; // value of the field to build when the callback was called
-};
-
-export type ResBuildField = {
-    value?: unknown;
-    error?: string;
-    existingValue: any; // value of the field to build when the callback was called
-};
-
-export type ReqUploadDataset = Record<string, any>;
-
 export type ReqLoadAttachment = {
     path: string;
     caption?: string;
@@ -48,31 +34,15 @@ export type ResLoadAttachment = {
     error?: string;
 };
 
-export type FieldError = {
-    field: string;
-    error: string;
-};
-
-export type UploadError = {
-    message?: string;
-    fieldErrors: FieldError[];
-};
-
-export type ResUploadDataset = {
-    datasetName: string;
-    pid?: string;
-    datasetUrl?: string;
-    error?: UploadError;
-};
-
 export class BackendComm {
     private readonly model: AnyModel<any>;
     private callbacks = new Map<string, Map<string, (payload: any) => void>>();
+    private readonly handler: (message: any) => void;
 
     constructor(model: AnyModel<any>) {
         this.model = model;
 
-        this.model.on("msg:custom", (message: any) => {
+        this.handler = (message: any) => {
             if (message.hasOwnProperty("type")) {
                 const key = message["key"] as string;
                 const callback = this.callbacks.get(message["type"])?.get(key);
@@ -82,11 +52,16 @@ export class BackendComm {
                 return;
             }
             console.warn(`Unknown message type: ${message}`);
-        });
+        };
+        this.model.on("msg:custom", this.handler);
+    }
+
+    destroy() {
+        this.model.off("msg:custom", this.handler);
     }
 
     sendReqInspectFile(key: string, payload: ReqInspectFile) {
-        this.model.send({ type: "req:inspect-file", key, payload });
+        this.send("req:inspect-file", key, payload);
     }
 
     onResInspectFile(key: string, callback: (payload: ResInspectFile) => void) {
@@ -98,7 +73,7 @@ export class BackendComm {
     }
 
     sendReqBrowseFiles(key: string, payload: ReqBrowseFiles) {
-        this.model.send({ type: "req:browse-files", key, payload });
+        this.send("req:browse-files", key, payload);
     }
 
     onResBrowseFiles(key: string, callback: (payload: ResBrowseFiles) => void) {
@@ -109,28 +84,8 @@ export class BackendComm {
         this.getForMethod("res:browse-files").delete(key);
     }
 
-    sendReqBuildField(key: string, payload: ReqBuildField) {
-        this.model.send({ type: "req:build-field", key, payload });
-    }
-
-    onResBuildField(key: string, callback: (payload: ResBuildField) => void) {
-        this.getForMethod("res:build-field").set(key, callback);
-    }
-
-    offResBuildField(key: string) {
-        this.getForMethod("res:build-field").delete(key);
-    }
-
-    sendReqUploadDataset(key: string, payload: ReqUploadDataset) {
-        this.model.send({ type: "req:upload-dataset", key, payload });
-    }
-
-    onResUploadDataset(key: string, callback: (payload: ResUploadDataset) => void) {
-        this.getForMethod("res:upload-dataset").set(key, callback);
-    }
-
     sendReqLoadAttachment(key: string, payload: ReqLoadAttachment) {
-        this.model.send({ type: "req:load-attachment", key, payload });
+        this.send("req:load-attachment", key, payload);
     }
 
     onResLoadAttachment(key: string, callback: (payload: ResLoadAttachment) => void) {
@@ -141,7 +96,11 @@ export class BackendComm {
         this.getForMethod("res:load-attachment").delete(key);
     }
 
-    private getForMethod(method: string) {
+    protected send(type: string, key: string, payload: Record<string, any>) {
+        this.model.send({ type, key, payload });
+    }
+
+    protected getForMethod(method: string) {
         const map = this.callbacks.get(method);
         if (map !== undefined) {
             return map;

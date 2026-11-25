@@ -28,7 +28,7 @@ dependencies = [
     "jupyterlab>=4.5.0",
     "jupyter-host-file-picker>=26.7.0",
     "pydantic>=2.12",
-    "scitacean>=26.7.1",
+    "scitacean>=26.10.1",
 ]
 
 [dependency-groups]
@@ -66,8 +66,14 @@ artifacts = ["src/scicat_widget/_static/*"]
 
 [tool.hatch.build.hooks.jupyter-builder]
 build-function = "hatch_jupyter_builder.npm_builder"
-ensured-targets = ["src/scicat_widget/_static/datasetUploadWidget.js"]
-skip-if-exists = ["src/scicat_widget/_static/datasetUploadWidget.js"]
+ensured-targets = [
+    "src/scicat_widget/_static/datasetUploadWidget.js",
+    "src/scicat_widget/_static/loginWidget.js",
+]
+skip-if-exists = [
+    "src/scicat_widget/_static/datasetUploadWidget.js",
+    "src/scicat_widget/_static/loginWidget.js",
+]
 dependencies = ["hatch-jupyter-builder>=0.5.0"]
 
 [tool.hatch.build.hooks.jupyter-builder.build-kwargs]
@@ -164,11 +170,11 @@ pydocstyle.convention = "numpy"
 [tool.ruff.lint.per-file-ignores]
 "ui-tests/*" = [
     "S101", # asserts are fine in tests
-    "D10",  # no docstrings required in tests
+    "D10", # no docstrings required in tests
 ]
 "tests/*" = [
     "S101", # asserts are fine in tests
-    "D10",  # no docstrings required in tests
+    "D10", # no docstrings required in tests
 ]
 "docs/*" = ["D", "E402", "F811", "F841", "RUF015", "S101", "T201"]
 "*.ipynb" = ["I"]

@@ -2,32 +2,29 @@
 # Copyright (c) 2026 SciCat Project (https://github.com/SciCatProject/scitacean)
 
 import inspect
-import pathlib
 from collections.abc import Callable, Iterable
 from typing import Any
+from urllib.parse import quote_plus, urljoin
 
-import anywidget
-import ipywidgets
 import traitlets
 from scitacean import Client, Dataset, ScicatCommError
 
-from ._comm import handle_event
-from ._logging import get_logger
-from ._model import Config, Instrument, ProposalOverview
-from ._scicat_api import get_user_and_scicat_info
-from ._serialization import (
+from .._logging import get_logger
+from .._model import Config, Instrument, ProposalOverview
+from .._scicat_api import get_user_and_scicat_info
+from .._serialization import (
     load_and_serialize_techniques,
     serialize_dataset,
     serialize_instrument,
     serialize_proposal,
 )
+from .._upload import UploadError, upload_dataset
+from ._base_widget import BaseWidget
+from ._js import js_and_css
 
-_STATIC_PATH = pathlib.Path(__file__).parent / "_static"
 
-
-class DatasetUploadWidget(anywidget.AnyWidget):
-    _esm = _STATIC_PATH / "datasetUploadWidget.js"
-    _css = _STATIC_PATH / "datasetUploadWidget.css"
+class DatasetUploadWidget(BaseWidget):
+    _esm, _css = js_and_css("datasetUploadWidget")
 
     config = traitlets.Dict().tag(sync=True)
     initial = traitlets.Dict().tag(sync=True)
@@ -36,7 +33,6 @@ class DatasetUploadWidget(anywidget.AnyWidget):
     def __init__(
         self,
         client: Client,
-        /,
         *,
         initial: Dataset | None = None,
         locked: Iterable[str] = (),
@@ -44,37 +40,60 @@ class DatasetUploadWidget(anywidget.AnyWidget):
     ) -> None:
         config = _build_config(client, locked=locked, skip_confirm=skip_confirm)
         initial_data, static = _collect_initial_data(client, initial)
+
+        event_handlers: dict[str, Callable[[str, dict[str, Any]], None]] = {
+            "req:build-field": self._handle_build_field,
+            "req:upload-dataset": self._handle_upload_dataset,
+        }
         super().__init__(
             config=config.model_dump(),
             initial=initial_data,
             staticData=static,
+            event_handlers=event_handlers,
         )
-        self.client = client  # TODO create client here if not given
+        self.client = client
 
-        # This `Output` is displayed alongside `self` so that sub widgets,
-        # e.g., a file picker can be attached to it and displayed.
-        # We need this because we cannot display widgets in callbacks
-        # as those don't have a display context.
-        self._aux_output_widget = ipywidgets.Output()
-        self._aux_output_widget.add_class("cean-output-anchor")
-        self._is_displaying = False
-
-        self.on_msg(handle_event)
-
-    def _repr_mimebundle_(
-        self, **kwargs: Any
-    ) -> tuple[dict[Any, Any], dict[Any, Any]] | None:
-        # This is a bit hacky, but it allows us to display this DatasetUploadWidget like
-        # normal while also placing the aux output widget next to it.
-        if self._is_displaying:
-            return super()._repr_mimebundle_(**kwargs)
-        self._is_displaying = True
+    def _handle_build_field(self, key: str, input_payload: dict[str, Any]) -> None:
         try:
-            return ipywidgets.VBox([self, self._aux_output_widget])._repr_mimebundle_(  # type: ignore[no-any-return]
-                **kwargs
-            )
-        finally:
-            self._is_displaying = False
+            factory = self.client.profile.field_factories[input_payload["name"]]
+        except KeyError:
+            payload = {"error": f"No factory for field {input_payload['name']}"}
+        else:
+            payload = {"value": _call_field_factory(factory, input_payload["values"])}
+
+        self.send(
+            {
+                "type": "res:build-field",
+                "key": key,
+                "payload": payload,
+            }
+        )
+
+    def _handle_upload_dataset(self, key: str, payload: dict[str, object]) -> None:
+        match upload_dataset(self.client, payload):
+            case Dataset() as ds:
+                self.send(
+                    {
+                        "type": "res:upload-dataset",
+                        "key": key,
+                        "payload": {
+                            "datasetName": ds.name,
+                            "pid": str(ds.pid),
+                            "datasetUrl": urljoin(
+                                self.config["frontendUrl"],
+                                "datasets/" + quote_plus(str(ds.pid)),
+                            ),
+                        },
+                    }
+                )
+            case UploadError() as error:
+                self.send(
+                    {
+                        "type": "res:upload-dataset",
+                        "key": key,
+                        "payload": {"error": error.model_dump(by_alias=True)},
+                    }
+                )
 
 
 def _build_config(
@@ -145,3 +164,10 @@ def _download_scicat_data(
         ],
     }
     return initial_data, instruments, proposals, access_groups
+
+
+def _call_field_factory(factory: Callable[..., Any], args: dict[str, Any]) -> Any:
+    spec = inspect.getfullargspec(factory)
+    pos_args = [args[name] for name in spec.args]
+    kw_args = {name: args[name] for name in spec.kwonlyargs}
+    return factory(*pos_args, **kw_args)

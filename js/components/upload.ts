@@ -1,11 +1,15 @@
-import { BackendComm, ResUploadDataset, UploadError } from "../comm";
+import {
+    DatasetUploadComm,
+    ResUploadDataset,
+    UploadError,
+} from "../datasetUploadWidget.ts";
 import { simpleLink, textElement } from "./output.ts";
 import { textButton } from "./button.ts";
 import { Dialog } from "./dialog.ts";
 import { Config } from "../models.ts";
 
 export class UploadComponent {
-    private readonly comm: BackendComm;
+    private readonly comm: DatasetUploadComm;
     private readonly frontendUrl: string | null;
     private readonly skipConfirmation: boolean;
     private readonly gatherData: () => GatherResult;
@@ -13,7 +17,11 @@ export class UploadComponent {
     private readonly key = crypto.randomUUID();
     private dialog: Dialog;
 
-    constructor(comm: BackendComm, config: Config, gatherData: () => GatherResult) {
+    constructor(
+        comm: DatasetUploadComm,
+        config: Config,
+        gatherData: () => GatherResult,
+    ) {
         this.comm = comm;
         this.frontendUrl = config.frontendUrl;
         this.skipConfirmation = config.skipConfirmation;
