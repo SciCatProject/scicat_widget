@@ -8,7 +8,7 @@ from ._dataset_upload_widget import DatasetUploadWidget
 from ._login_widget import LoginWidget
 
 
-class SciCatWidget(ipywidgets.VBox):
+class SciCatWidget(ipywidgets.VBox):  # type: ignore[misc]
     def __init__(
         self,
         client: Client | None = None,
@@ -27,14 +27,14 @@ class SciCatWidget(ipywidgets.VBox):
             underlying = LoginWidget(profiles)
             underlying.on_login(self._on_login)
         else:
-            underlying = DatasetUploadWidget(client, **upload_widget_args)
+            underlying = DatasetUploadWidget(client, **upload_widget_args)  # type: ignore[arg-type]
         super().__init__(children=_children_of(underlying))
         self._underlying: LoginWidget | DatasetUploadWidget = underlying
         self._upload_widget_args = upload_widget_args
 
     def _on_login(self, client: Client) -> None:
         old = self._underlying
-        upload_widget = DatasetUploadWidget(client, **self._upload_widget_args)
+        upload_widget = DatasetUploadWidget(client, **self._upload_widget_args)  # type: ignore[arg-type]
         self._underlying = upload_widget
         # TODO loading message
         self.children = _children_of(upload_widget)

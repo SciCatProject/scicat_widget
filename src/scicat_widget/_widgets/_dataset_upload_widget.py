@@ -41,7 +41,7 @@ class DatasetUploadWidget(BaseWidget):
         config = _build_config(client, locked=locked, skip_confirm=skip_confirm)
         initial_data, static = _collect_initial_data(client, initial)
 
-        event_handlers = {
+        event_handlers: dict[str, Callable[[str, dict[str, Any]], None]] = {
             "req:build-field": self._handle_build_field,
             "req:upload-dataset": self._handle_upload_dataset,
         }

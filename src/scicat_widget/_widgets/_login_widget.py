@@ -16,12 +16,12 @@ from ._js import js_and_css
 class LoginWidget(BaseWidget):
     _esm, _css = js_and_css("loginWidget")
 
-    instances = traitlets.List().tag(sync=True)
+    instances = traitlets.List[dict[str, object]]().tag(sync=True)
 
     def __init__(self, profiles: Iterable[Profile] | None = None) -> None:
         profile_dict = _load_profiles(profiles)
 
-        event_handlers = {
+        event_handlers: dict[str, Callable[[str, dict[str, Any]], None]] = {
             "req:login": self._handle_on_login,
         }
         super().__init__(
