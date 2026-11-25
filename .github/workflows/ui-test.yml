@@ -23,9 +23,9 @@ jobs:
       image: mcr.microsoft.com/playwright:v1.59.1-noble
       options: --user 1001
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: lts/*
       - name: Install dependencies
@@ -41,14 +41,14 @@ jobs:
           PYVER="${{ inputs.python-version }}"
           echo "name=test-py${PYVER//./}" >> "$GITHUB_OUTPUT"
       - name: Install pixi
-        uses: prefix-dev/setup-pixi@ad1da6449d9e506fd127fd67ab2d054a769f6a94 # 0.11.2
+        uses: prefix-dev/setup-pixi@9936258fee697aff89b3fed6ca1f80a382ef694e # 0.11.3
         with:
           pixi-version: "v0.82.1"
           environments: ${{ steps.pixi-env.outputs.name }}
 
       - name: Run Playwright tests
         run: pixi run test-js
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
           name: playwright-report
