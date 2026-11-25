@@ -2,7 +2,7 @@
 
 import importlib.metadata
 
-from ._widgets import DatasetUploadWidget
+from ._widgets._dataset_upload_widget import DatasetUploadWidget
 
 try:
     __version__ = importlib.metadata.version("scicat_widget")

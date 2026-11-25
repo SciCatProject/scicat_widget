@@ -21,8 +21,10 @@ export type File = {
 };
 
 export type Instance = {
-    name: string;
-    url: string;
+    key: string; // Unique key for backend communication
+    name: string; // Human-readable name
+    apiUrl: string;
+    frontendUrl: string;
     supportsSSO: boolean;
 };
 

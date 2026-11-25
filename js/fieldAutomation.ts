@@ -1,6 +1,6 @@
 import { InputComponent } from "./components/input";
 import { StaticData } from "./models.ts";
-import { BackendComm, ResBuildField } from "./comm.ts";
+import { DatasetUploadComm, ResBuildField } from "./datasetUploadWidget.ts";
 
 /**
  * Connect input fields to automatically set values based on changes.
@@ -14,7 +14,7 @@ export function connectInputs(
     inputs: Map<string, InputComponent<any>>,
     staticData: StaticData,
     fieldConnections: Record<string, string[]>,
-    comm: BackendComm,
+    comm: DatasetUploadComm,
 ): () => void {
     connectHardCoded(inputs, staticData);
     return connectUserDefined(inputs, staticData, fieldConnections, comm);
@@ -88,7 +88,7 @@ function connectUserDefined(
     inputs: Map<string, InputComponent<any>>,
     staticData: StaticData,
     fieldConnections: Record<string, string[]>,
-    comm: BackendComm,
+    comm: DatasetUploadComm,
 ): () => void {
     const responderKeys: string[] = [];
     for (const [targetName, dependencies] of Object.entries(fieldConnections)) {
@@ -170,7 +170,7 @@ function connectInputsForTarget(
     targetName: string,
     dependencies: string[],
     staticData: StaticData,
-    comm: BackendComm,
+    comm: DatasetUploadComm,
 ): string | null {
     const target = inputs.get(targetName);
     if (target === undefined) {

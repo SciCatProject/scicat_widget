@@ -989,3 +989,22 @@ input.cean-input, select.cean-input, textarea.cean-input {
         }
     }
 }
+
+.cean-login-result {
+    margin: 1.5em 0;
+    padding: 1.5em 1em;
+    display: flex;
+    flex-direction: column;
+    gap: 1em;
+
+    button {
+        align-self: flex-end;
+        padding: 0.5em 1.2em;
+        font-size: var(--jp-ui-font-size1);
+        border: 1px solid var(--jp-border-color1);
+    }
+}
+
+.cean-output-anchor {
+    display: none;
+}
