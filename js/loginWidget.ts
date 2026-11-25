@@ -57,6 +57,7 @@ async function render({ model, el }: RenderProps<WidgetModel>) {
         cleanupLogin();
         comm.offReqOpenBrowser("");
         el.replaceChildren(); // do not save old messages to the notebook
+        comm.destroy();
     };
 }
 

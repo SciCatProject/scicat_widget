@@ -37,11 +37,12 @@ export type ResLoadAttachment = {
 export class BackendComm {
     private readonly model: AnyModel<any>;
     private callbacks = new Map<string, Map<string, (payload: any) => void>>();
+    private readonly handler: (message: any) => void;
 
     constructor(model: AnyModel<any>) {
         this.model = model;
 
-        this.model.on("msg:custom", (message: any) => {
+        this.handler = (message: any) => {
             if (message.hasOwnProperty("type")) {
                 const key = message["key"] as string;
                 const callback = this.callbacks.get(message["type"])?.get(key);
@@ -51,7 +52,12 @@ export class BackendComm {
                 return;
             }
             console.warn(`Unknown message type: ${message}`);
-        });
+        };
+        this.model.on("msg:custom", this.handler);
+    }
+
+    destroy() {
+        this.model.off("msg:custom", this.handler);
     }
 
     sendReqInspectFile(key: string, payload: ReqInspectFile) {

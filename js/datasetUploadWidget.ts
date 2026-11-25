@@ -57,6 +57,7 @@ async function render({ model, el }: RenderProps<WidgetModel>) {
             input.destroy();
         }
         inputConnectionCleanup();
+        comm.destroy();
     };
 }
 
