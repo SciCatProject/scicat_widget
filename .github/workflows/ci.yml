@@ -50,7 +50,7 @@ jobs:
         include:
           - { python: "3.15", os: ubuntu-24.04 }
           - { python: "3.11", os: ubuntu-24.04 }
-          - { python: "3.11", os: macos-14 }
+          - { python: "3.11", os: macos-26 }
           - { python: "3.11", os: windows-2025 }
     uses: ./.github/workflows/base-test.yml
     with:
