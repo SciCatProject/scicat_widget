@@ -59,11 +59,13 @@ def get_proposals(client: Client, access_groups: list[str]) -> list[ProposalOver
 
 
 def _combine_pi_name(proposal: dict[str, str]) -> str | None:
-    if (pi_firstname := proposal.get("pi_firstname")) is None:
-        return None
-    if (pi_lastname := proposal.get("pi_lastname")) is None:
-        return None
-    return f"{pi_firstname} {pi_lastname}"
+    match (proposal.get("pi_firstname"), proposal.get("pi_lastname")):
+        case (None, None):
+            return None
+        case (None, name) | (name, None):
+            return name
+        case (first, last):
+            return f"{first} {last}"
 
 
 def get_instruments(client: Client) -> list[Instrument]:
