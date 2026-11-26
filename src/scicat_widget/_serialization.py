@@ -51,11 +51,15 @@ def load_and_serialize_techniques() -> dict[str, Any]:
 
 def serialize_dataset(dataset: Dataset) -> dict[str, Any]:
     """Serialize a Scitacean dataset to a dict for the JavaScript widget."""
+    # Drop unset fields, including empty lists (e.g., the default for
+    # `principal_investigators`). The widget treats initial values as user input,
+    # which would otherwise disable automatic updates of those fields.
     set = {
-        key: val for key, val in dataset.make_upload_fields().items() if val is not None
+        key: val
+        for key, val in dataset.make_upload_fields().items()
+        if val is not None and val not in ("", [])
     }
     if "techniques" in set:
-        # TODO reverse in upload
         set["techniques"] = [t.pid.rsplit("/", 1)[-1] for t in set["techniques"]]
     if "sourceFolder" in set:
         set["sourceFolder"] = set["sourceFolder"].posix

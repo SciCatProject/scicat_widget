@@ -52,8 +52,12 @@ function connectHardCoded(
         lockedFields,
         "principalInvestigators",
         "proposalIds",
-        (destination: InputComponent<string[]>, ids: string[] | null) => {
-            const names = extractFieldsForIds(staticData.proposals, ids, "piName");
+        (destination: InputComponent<string[]>, proposalIds: string[] | null) => {
+            const names = extractFieldsForIds(
+                staticData.proposals,
+                proposalIds,
+                "piName",
+            );
             if (names) {
                 destination.setSignaling(names, false);
             } else {
@@ -67,8 +71,12 @@ function connectHardCoded(
         lockedFields,
         "contactEmails",
         "proposalIds",
-        (destination: InputComponent<string[]>, ids: string[] | null) => {
-            const emails = extractFieldsForIds(staticData.proposals, ids, "piEmail");
+        (destination: InputComponent<string[]>, proposalIds: string[] | null) => {
+            const emails = extractFieldsForIds(
+                staticData.proposals,
+                proposalIds,
+                "piEmail",
+            );
             if (emails) {
                 destination.setSignaling(emails, false);
             } else {
