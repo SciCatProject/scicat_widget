@@ -15,7 +15,7 @@ export abstract class InputComponent<T> {
     private readonly inputContainer: HTMLElement;
     protected readonly statusElement: HTMLOutputElement;
     protected readonly wrapElement: HTMLDivElement;
-    protected locked: boolean = false;
+    protected editable: boolean = true;
 
     readonly required: boolean;
     customValidator: Validator<T> | null;
@@ -74,8 +74,14 @@ export abstract class InputComponent<T> {
         this.updated(userTriggered);
     }
 
-    lock() {
-        this.locked = true;
+    /**
+     * Prevent the user from editing this input.
+     *
+     * This does not prevent programmatic updates via `setSilent` or `setSignaling`.
+     * In particular, automatically derived fields can still be updated.
+     */
+    disableEditing() {
+        this.editable = false;
     }
 
     /**

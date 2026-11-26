@@ -47,6 +47,22 @@ test("trims input", async ({ page }) => {
     });
 });
 
+test("non-editable input can be set programmatically", async ({ page }) => {
+    await page.evaluate(() => {
+        const [input, container] = window.createInputComponent("text", "My text", {});
+        window.setRootChildren(container);
+        input.disableEditing();
+        // Simulates a value that is derived from other fields after editing
+        // was disabled, e.g., by a field factory.
+        input.setSignaling("Lorem ipsum", false);
+    });
+
+    const input = page.getByLabel("My text");
+    await expect(input).toBeDisabled();
+    await expect(input).toHaveValue("Lorem ipsum");
+    await expect(page.locator(".cean-clear-button")).toBeDisabled();
+});
+
 test("can be multiline", async ({ page }) => {
     await mount(page, "text", "My text", { multiline: true });
 

@@ -112,8 +112,6 @@ export class ComboboxInput extends InputComponent<string> {
     }
 
     setSilent(value: string | null) {
-        if (this.locked) return;
-
         deselectAll(this.listbox);
         const match = value === null ? null : findOptionByValue(this.listbox, value);
         if (match !== null) {
@@ -133,8 +131,8 @@ export class ComboboxInput extends InputComponent<string> {
         this.validate();
     }
 
-    lock() {
-        super.lock();
+    disableEditing() {
+        super.disableEditing();
         this.searchBar.disabled = true;
     }
 

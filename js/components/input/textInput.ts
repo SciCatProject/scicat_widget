@@ -54,14 +54,18 @@ export class TextInput extends InputComponent<string> {
     }
 
     setSilent(value: string | null) {
-        if (this.locked) return;
         this.inputElement.value = value ?? "";
-        this.clearButton.disabled = this.inputElement.value.length === 0;
+        this.updateClearButton();
     }
 
     updated(userTriggered: boolean = true) {
-        this.clearButton.disabled = this.inputElement.value.length === 0;
+        this.updateClearButton();
         super.updated(userTriggered);
+    }
+
+    private updateClearButton() {
+        this.clearButton.disabled =
+            !this.editable || this.inputElement.value.length === 0;
     }
 
     get placeholder(): string {
@@ -76,9 +80,10 @@ export class TextInput extends InputComponent<string> {
         return this.inputElement.id;
     }
 
-    lock() {
-        super.lock();
+    disableEditing() {
+        super.disableEditing();
         this.inputElement.disabled = true;
+        this.clearButton.disabled = true;
     }
 
     protected get validationElement(): HTMLElement {

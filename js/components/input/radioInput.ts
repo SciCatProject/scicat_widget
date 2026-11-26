@@ -79,8 +79,8 @@ export class RadioInput extends InputComponent<string> {
         return this.fieldset.id;
     }
 
-    lock() {
-        super.lock();
+    disableEditing() {
+        super.disableEditing();
         for (const checkbox of this.checkboxes()) {
             checkbox.disabled = true;
         }

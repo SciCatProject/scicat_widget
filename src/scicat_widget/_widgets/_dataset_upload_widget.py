@@ -36,9 +36,12 @@ class DatasetUploadWidget(BaseWidget):
         *,
         initial: Dataset | None = None,
         locked: Iterable[str] = (),
+        non_editable: Iterable[str] = (),
         skip_confirm: bool = False,
     ) -> None:
-        config = _build_config(client, locked=locked, skip_confirm=skip_confirm)
+        config = _build_config(
+            client, locked=locked, non_editable=non_editable, skip_confirm=skip_confirm
+        )
         initial_data, static = _collect_initial_data(client, initial)
 
         event_handlers: dict[str, Callable[[str, dict[str, Any]], None]] = {
@@ -54,12 +57,15 @@ class DatasetUploadWidget(BaseWidget):
         self.client = client
 
     def _handle_build_field(self, key: str, input_payload: dict[str, Any]) -> None:
+        payload: dict[str, Any]
         try:
             factory = self.client.profile.field_factories[input_payload["name"]]
         except KeyError:
             payload = {"error": f"No factory for field {input_payload['name']}"}
         else:
             payload = {"value": _call_field_factory(factory, input_payload["values"])}
+        # Echo the request id so JS can discard responses to outdated requests.
+        payload["requestId"] = input_payload.get("requestId")
 
         self.send(
             {
@@ -100,6 +106,7 @@ def _build_config(
     client: Client,
     *,
     locked: Iterable[str],
+    non_editable: Iterable[str],
     skip_confirm: bool,
 ) -> Config:
     profile = client.profile
@@ -111,6 +118,7 @@ def _build_config(
             for name, fn in profile.field_factories.items()
         },
         lockedFields=list(locked),
+        nonEditableFields=list(non_editable),
         skipConfirmation=skip_confirm,
     )
 

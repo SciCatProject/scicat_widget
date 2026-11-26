@@ -77,12 +77,12 @@ export class MultiAttachmentInput extends InputComponent<Attachment[]> {
         return this.newAttachmentInput.id;
     }
 
-    lock() {
-        super.lock();
-        this.newAttachmentInput.lock();
+    disableEditing() {
+        super.disableEditing();
+        this.newAttachmentInput.disableEditing();
         this.attachmentsContainer.classList.add("cean-locked");
         this.attachments.forEach((view) => {
-            view.lock();
+            view.disableEditing();
         });
     }
 
@@ -204,8 +204,8 @@ class AttachmentView {
         return [this.data, this.captionInput.value || this.captionInput.placeholder];
     }
 
-    lock() {
-        this.captionInput.lock();
+    disableEditing() {
+        this.captionInput.disableEditing();
     }
 }
 

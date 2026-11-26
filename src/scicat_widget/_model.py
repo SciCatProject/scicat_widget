@@ -13,6 +13,7 @@ class Config(BaseModel):
     scientificMetadataSchema: ScientificMetadataSchema
     fieldDependencies: dict[str, list[str]]
     lockedFields: list[str]
+    nonEditableFields: list[str]
     skipConfirmation: bool
 
 

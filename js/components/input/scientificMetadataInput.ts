@@ -84,8 +84,8 @@ export class ScientificMetadataInput extends InputComponent<ScientificMetadataIt
         return this.tableBody.id;
     }
 
-    lock() {
-        super.lock();
+    disableEditing() {
+        super.disableEditing();
         for (const input of this.container.querySelectorAll("input")) {
             input.disabled = true;
         }

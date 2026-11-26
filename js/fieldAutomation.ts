@@ -1,4 +1,4 @@
-import { InputComponent } from "./components/input";
+import { InputComponent, UpdateEvent } from "./components/input";
 import { StaticData } from "./models.ts";
 import { DatasetUploadComm, ResBuildField } from "./datasetUploadWidget.ts";
 
@@ -8,6 +8,8 @@ import { DatasetUploadComm, ResBuildField } from "./datasetUploadWidget.ts";
  * @param staticData Unchanging data to extract information from.
  * @param fieldConnections User-declared relationships between fields.
  * @param comm Communication interface for backend interactions.
+ * @param lockedFields Fields that must never be changed automatically.
+ *                     They can still be used as sources for other fields.
  * @returns Function to clean up the comm interface.
  */
 export function connectInputs(
@@ -15,17 +17,20 @@ export function connectInputs(
     staticData: StaticData,
     fieldConnections: Record<string, string[]>,
     comm: DatasetUploadComm,
+    lockedFields: Set<string>,
 ): () => void {
-    connectHardCoded(inputs, staticData);
-    return connectUserDefined(inputs, staticData, fieldConnections, comm);
+    connectHardCoded(inputs, lockedFields, staticData);
+    return connectUserDefined(inputs, lockedFields, staticData, fieldConnections, comm);
 }
 
 function connectHardCoded(
     inputs: Map<string, InputComponent<any>>,
+    lockedFields: Set<string>,
     staticData: StaticData,
 ) {
     connectInputPair(
         inputs,
+        lockedFields,
         "instrumentIds",
         "proposalIds",
         (destination: InputComponent<string[]>, proposalIds: string[] | null) => {
@@ -44,6 +49,7 @@ function connectHardCoded(
 
     connectInputPair(
         inputs,
+        lockedFields,
         "principalInvestigators",
         "proposalIds",
         (destination: InputComponent<string[]>, ids: string[] | null) => {
@@ -58,6 +64,7 @@ function connectHardCoded(
 
     connectInputPair(
         inputs,
+        lockedFields,
         "contactEmails",
         "proposalIds",
         (destination: InputComponent<string[]>, ids: string[] | null) => {
@@ -72,6 +79,7 @@ function connectHardCoded(
 
     connectInputPair(
         inputs,
+        lockedFields,
         "type",
         "inputDatasets",
         (datasetType: InputComponent<string>, inputDatasets: string[] | null) => {
@@ -86,12 +94,14 @@ function connectHardCoded(
 
 function connectUserDefined(
     inputs: Map<string, InputComponent<any>>,
+    lockedFields: Set<string>,
     staticData: StaticData,
     fieldConnections: Record<string, string[]>,
     comm: DatasetUploadComm,
 ): () => void {
     const responderKeys: string[] = [];
     for (const [targetName, dependencies] of Object.entries(fieldConnections)) {
+        if (lockedFields.has(targetName)) continue;
         const key = connectInputsForTarget(
             inputs,
             targetName,
@@ -184,12 +194,20 @@ function connectInputsForTarget(
     }
 
     const key = crypto.randomUUID();
+    // Requests are answered asynchronously and may arrive after newer requests
+    // have been sent. Only the response to the latest request is applied.
+    let latestRequestId = 0;
+    // Once the user (or the initial data) has set a value, it takes precedence over
+    // automatic updates, including responses to requests that are still in flight.
+    let setByUser = false;
+    target.container.addEventListener("input-updated", ((event: UpdateEvent) => {
+        if (event.userTriggered) setByUser = true;
+    }) as EventListener);
+
     const responder = (payload: ResBuildField) => {
         if (payload.error !== undefined) {
             console.error(`Failed to build field ${targetName}: ${payload.error}`);
-        } else if (payload.existingValue == target.value) {
-            // If the component's value has changed while the builder was running,
-            // that value takes precedence.
+        } else if (payload.requestId === latestRequestId && !setByUser) {
             target.setSignaling(payload.value, false);
         }
     };
@@ -197,6 +215,9 @@ function connectInputsForTarget(
 
     for (const [_, emitter] of sources) {
         target.listenToInput(emitter, () => {
+            // Invalidate any requests that are still in flight.
+            latestRequestId += 1;
+
             const values: Record<string, any> = {};
             for (const [source, valueInput] of sources) {
                 const value = source.getter(valueInput);
@@ -210,7 +231,7 @@ function connectInputsForTarget(
             comm.sendReqBuildField(key, {
                 name: targetName,
                 values,
-                existingValue: target.value,
+                requestId: latestRequestId,
             });
         });
     }
@@ -220,10 +241,12 @@ function connectInputsForTarget(
 
 function connectInputPair<Dst, Src>(
     inputs: Map<string, InputComponent<any>>,
+    lockedFields: Set<string>,
     target: string,
     source: string,
     listener: (dst: InputComponent<Dst>, value: Src | null) => void,
 ) {
+    if (lockedFields.has(target)) return;
     const src = inputs.get(source);
     if (src === undefined) return;
     inputs.get(target)?.listenToInput(src, listener);

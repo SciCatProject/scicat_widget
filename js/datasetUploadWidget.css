@@ -576,6 +576,10 @@ input.cean-input, select.cean-input, textarea.cean-input {
         box-shadow: none;
         background: var(--jp-input-active-background);
     }
+
+    &:disabled {
+        cursor: not-allowed;
+    }
 }
 
 .cean-toggle-button {

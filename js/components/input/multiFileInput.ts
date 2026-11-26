@@ -85,12 +85,12 @@ export class MultiFileInput extends InputComponent<File[]> {
         return this.newFileInput.id;
     }
 
-    lock() {
-        super.lock();
-        this.newFileInput.lock();
+    disableEditing() {
+        super.disableEditing();
+        this.newFileInput.disableEditing();
         this.selectedContainer.classList.add("cean-locked");
         this.selectedFiles.forEach(({ remotePathInput }) => {
-            remotePathInput.lock();
+            remotePathInput.disableEditing();
         });
     }
 
