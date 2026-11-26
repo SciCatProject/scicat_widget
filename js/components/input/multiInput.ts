@@ -53,14 +53,13 @@ export class MultiInput extends InputComponent<string[]> {
     }
 
     setSilent(value: string[] | null) {
-        if (this.locked) return;
         this.selectionContainer.replaceChildren();
         (value ?? []).forEach((val) => this.addItem(val, false));
     }
 
-    lock() {
-        super.lock();
-        this.underlying.lock();
+    disableEditing() {
+        super.disableEditing();
+        this.underlying.disableEditing();
         this.underlying.container.remove();
         this.container.classList.add("cean-locked");
     }

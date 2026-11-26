@@ -576,6 +576,10 @@ input.cean-input, select.cean-input, textarea.cean-input {
         box-shadow: none;
         background: var(--jp-input-active-background);
     }
+
+    &:disabled {
+        cursor: not-allowed;
+    }
 }
 
 .cean-toggle-button {
@@ -740,6 +744,11 @@ input.cean-input, select.cean-input, textarea.cean-input {
     }
 }
 
+.cean-item-primary {
+    font-weight: bold;
+    color: var(--jp-info-color1);
+}
+
 .cean-item-detail-row {
     color: var(--jp-content-font-color3);
 }
@@ -748,14 +757,23 @@ input.cean-input, select.cean-input, textarea.cean-input {
     display: flex;
     flex-direction: column;
     flex-grow: 1;
+}
 
-    .cean-item-key {
-        font-weight: bold;
-        color: var(--jp-info-color1);
+.cean-instrument {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+
+    .cean-item-detail-row .cean-item-key {
+        color: var(--jp-content-font-color1);
     }
 }
 
 .cean-combobox-option:not(:last-child):has(.cean-proposal) {
+    border-bottom: 1px solid var(--jp-layout-color2);
+}
+
+.cean-combobox-option:not(:last-child):has(.cean-instrument) {
     border-bottom: 1px solid var(--jp-layout-color2);
 }
 

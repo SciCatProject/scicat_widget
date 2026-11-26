@@ -247,6 +247,55 @@ Second line.`);
             `Attachment is an image`,
         ).toHaveCount(1);
     });
+
+    test("Non-editable field is derived from other fields", async ({ page }) => {
+        const nbPath = "dataset_upload_widget_locked_and_editable.ipynb";
+        await page.notebook.openByPath(nbPath);
+        await page.notebook.activate(nbPath);
+        expect(await page.notebook.runCell(0)).toBe(true);
+        const locator = await page.notebook.getCellOutputLocator(0);
+        if (locator === null) throw new Error("Could not find output locator");
+
+        // The value is built asynchronously in Python after editing was disabled.
+        await locator.getByRole("tab", { name: /Files/ }).click();
+        const sourceFolder = locator.getByLabel("Source folder");
+        await expect(sourceFolder).toBeDisabled();
+        await expect(sourceFolder).toHaveValue("/data/p.123/instr.9");
+
+        // The field still follows changes to its dependencies.
+        await locator.getByRole("tab", { name: "Dataset", exact: true }).click();
+        await fillMulti(locator.getByLabel("Proposals"), ["p.456"]);
+        await locator.getByRole("tab", { name: /Files/ }).click();
+        await expect(sourceFolder).toHaveValue("/data/p.123-p.456/instr.9");
+    });
+
+    test("Locked field is not derived from other fields", async ({ page }) => {
+        const nbPath = "dataset_upload_widget_locked_and_editable.ipynb";
+        await page.notebook.openByPath(nbPath);
+        await page.notebook.activate(nbPath);
+        expect(await page.notebook.runCell(0)).toBe(true);
+        expect(await page.notebook.runCell(1)).toBe(true);
+        const locator = await page.notebook.getCellOutputLocator(1);
+        if (locator === null) throw new Error("Could not find output locator");
+
+        const ownerGroup = locator.getByLabel("Owner group");
+        const creationLocation = locator.getByLabel("Creation location");
+        // creationLocation is derived via the same mechanism as the locked fields.
+        // Waiting for it ensures that responses for the locked fields would have
+        // arrived if they had been requested.
+        await expect(creationLocation).toHaveValue("loc-p.123");
+        await expect(ownerGroup).toBeDisabled();
+        await expect(ownerGroup).toHaveValue("");
+
+        await fillMulti(locator.getByLabel("Proposals"), ["p.456"]);
+        await expect(creationLocation).toHaveValue("loc-p.123-p.456");
+        await expect(ownerGroup).toHaveValue("");
+
+        await locator.getByRole("tab", { name: /Files/ }).click();
+        const sourceFolder = locator.getByLabel("Source folder");
+        await expect(sourceFolder).toBeDisabled();
+        await expect(sourceFolder).toHaveValue("/initial");
+    });
 });
 
 function expectDate(date: string, time: string, expected: string, message: string) {

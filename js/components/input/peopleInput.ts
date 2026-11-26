@@ -56,10 +56,10 @@ export class PeopleInput extends InputComponent<Person[]> {
         }
     }
 
-    lock() {
-        super.lock();
+    disableEditing() {
+        super.disableEditing();
         for (const person of this.peopleComponents.values()) {
-            person.lock();
+            person.disableEditing();
         }
         this.container.classList.add("cean-locked");
     }
@@ -134,10 +134,10 @@ class PersonInput {
         this.orcidInput.setSilent(value?.orcid ?? null);
     }
 
-    lock() {
-        this.nameInput.lock();
-        this.emailInput.lock();
-        this.orcidInput.lock();
+    disableEditing() {
+        this.nameInput.disableEditing();
+        this.emailInput.disableEditing();
+        this.orcidInput.disableEditing();
     }
 
     get element(): HTMLFieldSetElement {

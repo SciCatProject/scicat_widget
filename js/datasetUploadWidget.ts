@@ -26,6 +26,7 @@ async function render({ model, el }: RenderProps<WidgetModel>) {
         staticData,
         config.fieldDependencies,
         comm,
+        new Set(config.lockedFields),
     );
 
     const uploader = new UploadComponent(comm, config, () => {
@@ -47,9 +48,8 @@ async function render({ model, el }: RenderProps<WidgetModel>) {
         true,
     );
 
-    // lockFields must be after setInitialData to set the data before locks take effect.
     setInitialData(inputs, model.get("initial"));
-    lockFields(inputs, config.lockedFields);
+    disableEditing(inputs, [...config.lockedFields, ...config.nonEditableFields]);
 
     return () => {
         datasetOverview.destroy();
@@ -79,13 +79,15 @@ function setInitialData(
     }
 }
 
-function lockFields(inputs: Map<string, InputComponent<any>>, lockedFields: string[]) {
-    for (const name of lockedFields) {
+function disableEditing(inputs: Map<string, InputComponent<any>>, fields: string[]) {
+    for (const name of fields) {
         const input = inputs.get(name);
         if (input === undefined) {
-            console.warn(`Cannot lock field '${name}', field does not exist`);
+            console.warn(
+                `Cannot disable editing of field '${name}', field does not exist`,
+            );
         } else {
-            input.lock();
+            input.disableEditing();
         }
     }
 }
@@ -103,13 +105,13 @@ function gatherData(inputs: Map<string, InputComponent<any>>): GatherResult {
 type ReqBuildField = {
     name: string;
     values: Record<string, any>;
-    existingValue: any; // value of the field to build when the callback was called
+    requestId: number; // echoed back in the response
 };
 
 export type ResBuildField = {
     value?: unknown;
     error?: string;
-    existingValue: any; // value of the field to build when the callback was called
+    requestId: number; // id of the request that this is a response to
 };
 
 type ReqUploadDataset = Record<string, any>;

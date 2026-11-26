@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026 SciCat Project (https://github.com/SciCatProject/scitacean)
+
 from collections.abc import Iterable
 
 import ipywidgets
@@ -16,11 +19,13 @@ class SciCatWidget(ipywidgets.VBox):  # type: ignore[misc]
         profiles: Iterable[Profile] | None = None,
         initial: Dataset | None = None,
         locked: Iterable[str] = (),
+        non_editable: Iterable[str] = (),
         skip_confirm: bool = False,
     ) -> None:
         upload_widget_args = {
             "initial": initial,
-            "locked": locked,
+            "locked": list(locked),  # Might get used multiple times => make list
+            "non_editable": list(non_editable),
             "skip_confirm": skip_confirm,
         }
         if client is None:

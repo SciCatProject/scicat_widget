@@ -72,9 +72,9 @@ export class FileInput extends InputComponent<string> {
         return this.textInput.id;
     }
 
-    lock() {
-        super.lock();
-        this.textInput.lock();
+    disableEditing() {
+        super.disableEditing();
+        this.textInput.disableEditing();
         this.container.querySelectorAll("button").forEach((button) => {
             button.disabled = true;
         });

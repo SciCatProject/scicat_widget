@@ -13,10 +13,11 @@ export interface Options extends ComboboxOptions {
 export class ComboboxManualInput extends InputComponent<string> {
     private readonly comboboxInput: ComboboxInput;
     private readonly textInput: TextInput;
+    private readonly manualToggle: HTMLInputElement;
     private readonly id_ = crypto.randomUUID();
 
     constructor(key: string, choices: Choice[], options: Options) {
-        const comboboxInput = new ComboboxInput(`${key}-combobox}`, choices, options);
+        const comboboxInput = new ComboboxInput(`${key}-combobox`, choices, options);
         const textInput = new TextInput(`${key}-text`, {});
         const manualButton = toggleButton(
             "pen",
@@ -37,12 +38,13 @@ export class ComboboxManualInput extends InputComponent<string> {
         super(key, container, options);
         this.comboboxInput = comboboxInput;
         this.textInput = textInput;
+        this.manualToggle = manualButton.querySelector("input")!;
 
         if (choices.length > 0) {
             this.setDropdown();
         } else {
             this.setManual();
-            manualButton.querySelector("input")!.disabled = true;
+            this.manualToggle.disabled = true;
             manualButton.title = "Selection not available";
         }
 
@@ -71,7 +73,6 @@ export class ComboboxManualInput extends InputComponent<string> {
     }
 
     setSilent(value: string | null) {
-        if (this.locked) return;
         this.getActive().setSilent(value);
     }
 
@@ -80,10 +81,12 @@ export class ComboboxManualInput extends InputComponent<string> {
         this.updated(userTriggered);
     }
 
-    lock() {
-        super.lock();
-        this.textInput.lock();
-        this.comboboxInput.lock();
+    disableEditing() {
+        super.disableEditing();
+        this.textInput.disableEditing();
+        this.comboboxInput.disableEditing();
+        // Toggling between modes would change the value.
+        this.manualToggle.disabled = true;
     }
 
     private setManual() {

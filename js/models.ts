@@ -10,6 +10,7 @@ export type Config = {
     scientificMetadataSchema: "plain" | "value-unit";
     fieldDependencies: Record<string, string[]>;
     lockedFields: string[];
+    nonEditableFields: string[];
     skipConfirmation: boolean;
 };
 
